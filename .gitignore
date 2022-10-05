@@ -1,0 +1,29 @@
+# Binaries
+bin/
+obj/
+
+logs/
+
+# Support
+*.log
+imgui.ini
+
+# Visual Studio files
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+Engine.*
+*.i
+enc_temp_folder/
+CPTCMakeBuild/
+
+#CmakeFiles
+out/
+
+#Idea
+.idea
+
+#PVS-Studio files
+*.PVS-Studio*
