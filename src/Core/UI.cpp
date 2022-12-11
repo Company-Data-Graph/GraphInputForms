@@ -5,7 +5,10 @@
 #include <imgui_impl_opengl3.h>
 
 #include <Core/FormHandler.hpp>
-#include <Forms/ProjectForm.hpp>
+#include <Forms/InsertForms.hpp>
+#include <Forms/UpdateForms.hpp>
+#include <Forms/DeleteForms.hpp>
+#include <Forms/AuthForm.hpp>
 
 namespace DataGraph
 {
@@ -125,7 +128,9 @@ void setColors()
 
 void setFonts()
 {
-	const ImFont* mainMenuFont = ImGui::GetIO().Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Regular.ttf", 20.0f);
+	ImFontAtlas atlas;
+	const ImFont* mainMenuFont
+		 = ImGui::GetIO().Fonts->AddFontFromFileTTF("resources/fonts/segoeui.ttf", 20.0f, 0, atlas.GetGlyphRangesCyrillic());
 	assert(mainMenuFont != NULL);
 }
 
@@ -229,14 +234,33 @@ int UI::init()
 {
 	FormHandler::logs()->log("Core", "UI initialization has begun.");
 
-	auto form = new (std::nothrow) Forms::ProjectForm;
+	auth.init();
+
+	auto form = new (std::nothrow) Forms::InsertForm;
 	if (form == nullptr)
 	{
 		FormHandler::logs()->log("Core", "UI initialization has failed with error\"Not enough memory\".");
 		return -1;
 	}
+	forms.emplace_back(form);
 
-	forms.emplace("InsertForm", form);
+	auto updateForm = new (std::nothrow) Forms::UpdateForm;
+	if (updateForm == nullptr)
+	{
+		FormHandler::logs()->log("Core", "UI initialization has failed with error\"Not enough memory\".");
+		return -1;
+	}
+
+	forms.emplace_back(updateForm);
+
+	auto deleteForm = new (std::nothrow) Forms::DeleteForm;
+	if (deleteForm == nullptr)
+	{
+		FormHandler::logs()->log("Core", "UI initialization has failed with error\"Not enough memory\".");
+		return -1;
+	}
+
+	forms.emplace_back(deleteForm);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -251,11 +275,11 @@ int UI::init()
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NavEnableKeyboard;
 	for (auto&& form : forms)
 	{
-		FormHandler::logs()->log("Core", "{0} form initialization has begun.", form.first);
-		auto result = form.second->init();
+		FormHandler::logs()->log("Core", "{0} form initialization has begun.", form->name());
+		auto result = form->init();
 		assert(result == 0);
 
-		FormHandler::logs()->log("Core", "{0} form initialization has ended successfully.", form.first);
+		FormHandler::logs()->log("Core", "{0} form initialization has ended successfully.", form->name());
 	}
 
 	FormHandler::logs()->log("Core", "UI initialization has ended successfully.");
@@ -268,10 +292,35 @@ void UI::beginFrame()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	for (auto form : forms)
+
+	ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->Pos);
+	ImGui::SetNextWindowSize(viewport->Size);
+	ImGui::SetNextWindowViewport(viewport->ID);
+
+	ImGui::Begin("GraphFormWindow", nullptr, ImGuiWindowFlags_NoTitleBar);
+	ImGui::BeginTabBar("GraphForms");
+
+	if (ImGui::BeginTabItem("AuthForm"))
 	{
-		form.second->draw();
+		auth.draw();
+		ImGui::EndTabItem();
 	}
+
+	if (FormHandler::getDbConn() && FormHandler::getDbConn()->is_connected())
+	{
+		for (auto form : forms)
+		{
+			if (ImGui::BeginTabItem(form->name()))
+			{
+				form->draw();
+				ImGui::EndTabItem();
+			}
+		}
+	}
+
+	ImGui::EndTabBar();
+	ImGui::End();
 }
 
 void UI::endFrame()
@@ -283,7 +332,7 @@ UI::~UI()
 {
 	for (auto form : forms)
 	{
-		delete form.second;
+		delete form;
 	}
 }
 }  // namespace DataGraph
