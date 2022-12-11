@@ -1,10 +1,11 @@
 #ifndef DATAGRAPHTOOL_CORE_UI_H__
 #define DATAGRAPHTOOL_CORE_UI_H__
 
-#include <unordered_map>
-#include <string>
+#include <list>
 
 #include <Forms/Form.hpp>
+
+#include <Forms/AuthForm.hpp>
 
 namespace DataGraph
 {
@@ -18,7 +19,9 @@ public:
 	~UI();
 
 private:
-	std::unordered_map<std::string, Forms::Form*> forms;
+	Forms::AuthForm auth;
+
+	std::list<Forms::Form*> forms;
 };
 }  // namespace DataGraph
 #endif

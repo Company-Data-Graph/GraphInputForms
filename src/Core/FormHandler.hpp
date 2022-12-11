@@ -6,6 +6,8 @@
 #include "Logger.hpp"
 #include "UI.hpp"
 
+#include <pgfe/pgfe.hpp>
+
 class GLFWwindow;
 namespace DataGraph
 {
@@ -21,6 +23,7 @@ public:
 
 	static std::unique_ptr<Logger>& logs();
 	static std::unique_ptr<UI>& getUI();
+	static std::unique_ptr<dmitigr::pgfe::Connection>& getDbConn();
 
 	int init(bool resizeAble = true);
 	void run();
@@ -50,6 +53,7 @@ private:
 
 	static std::unique_ptr<Logger> loggers;
 	static std::unique_ptr<UI> ui;
+	static std::unique_ptr<dmitigr::pgfe::Connection> dbConnection;
 
 	friend class UI;
 };
