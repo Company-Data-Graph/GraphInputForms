@@ -8,7 +8,7 @@
 #include <vector>
 #include <set>
 
-#include <iostream>
+#include <Core/FormHandler.hpp>
 
 namespace DataGraph::Forms
 {
@@ -16,48 +16,53 @@ int CompanyInsert::init() { return 0; }
 
 int CompanyInsert::draw()
 {
-	char nameBuf[20] = {};
-	int maxSize = 10;
-
 	if (!m_errorMessage.empty())
 	{
-		ImGui::TextColored({0.9, 0, 0, 1}, "Error has occurred: \"%s\"", m_errorMessage.data());
+		if (m_errorCode != 0)
+		{
+			ImGui::TextColored({0.9, 0, 0, 1}, "Error has occurred: \"%s\"", m_errorMessage.data());
+		}
+		else
+		{
+			ImGui::TextColored({0, 0.9, 0, 1}, "%s", m_errorMessage.data());
+		}
 	}
 
 	ImGui::Text("Company name: ");
 	ImGui::SameLine();
-	ImGui::InputText("##Name", nameBuf, 20);
+	ImGui::InputText("##Name", &m_companyName);
 
 	std::string iconPath;
 	ImGui::Text("IconPath: ");
 	ImGui::SameLine();
 	ImGui::InputText("##IconPath", &iconPath);
 
-	ImGui::Text("Owner: ");
+	ImGui::Text("Owner name: ");
 	ImGui::SameLine();
-	int curItem = 0;
-	std::vector<const char*> items = {};
-	ImGui::PushItemWidth(350);
-	ImGui::Combo("##OwnersList", &curItem, items.data(), items.size());
-	bool hovered = ImGui::IsItemHovered();
-
-	std::string ownerSearch;
-	ImGui::SameLine();
-	ImGui::Text("Owner search: ");
-	ImGui::SameLine();
-	ImGui::PushItemWidth(350);
-	ImGui::InputText("##OwnerSearch", &ownerSearch);
-	hovered |= ImGui::IsItemHovered();
-
-	if (items.empty() && hovered)
+	static std::string preview = "";
+	static int curId = -1;
+	if (ImGui::BeginCombo("##OwnersList", preview.c_str()))
 	{
-		ImGui::BeginTooltip();
-
-		ImGui::Text("Owner not found, you could create it inside Insert->Owners form");
-		ImGui::EndTooltip();
+		FormHandler::getDbConn()->execute(
+			 [](auto&& data) {
+				 using dmitigr::pgfe::to;
+				 std::pair dt{to<int>(data[0]), std::move(to<std::string>(data[1]))};
+				 if (ImGui::Selectable(dt.second.c_str()))
+				 {
+					 curId = dt.first;
+					 preview = std::move(dt.second);
+				 }
+			 },
+			 "SELECT * FROM getownerslist($1)", m_ownerSearch);
+		ImGui::EndCombo();
 	}
 
-	static int employees = 0;
+	ImGui::SameLine();
+	ImGui::Text("Owner search by name: ");
+	ImGui::SameLine();
+	ImGui::PushItemWidth(250);
+	ImGui::InputText("##OwnerSearch", &m_ownerSearch);
+
 	static bool knownEmployeeCount = false;
 	if (knownEmployeeCount)
 	{
@@ -66,7 +71,7 @@ int CompanyInsert::draw()
 	ImGui::Text("Employee count: ");
 	ImGui::SameLine();
 	ImGui::PushItemWidth(350);
-	ImGui::InputInt("##EmployeeCount", &employees);
+	ImGui::InputInt("##EmployeeCount", &m_employees);
 
 	if (knownEmployeeCount)
 	{
@@ -78,76 +83,52 @@ int CompanyInsert::draw()
 	ImGui::SameLine();
 	ImGui::Checkbox("##UnknownEmployeeCount", &knownEmployeeCount);
 
-	std::string desc;
 	ImGui::Text("Description: ");
 	ImGui::SameLine();
-	ImGui::InputTextMultiline("##Description", &desc);
+	ImGui::InputTextMultiline("##Description", &m_companyDesc);
 
-	std::string addr;
 	ImGui::Text("Address: ");
 	ImGui::SameLine();
-	ImGui::InputText("##Address", &addr);
+	ImGui::InputText("##Address", &m_companyAddr);
 
-	std::vector<const char*> Departments = {"It", "Banking", "Shop"};
-	static std::set<int> selected;
-
-	hovered = false;
-
-	std::string DepartmentName;
-	ImGui::Text("Department search: ");
+	ImGui::Text("Department name: ");
 	ImGui::SameLine();
-	ImGui::PushItemWidth(350);
-	ImGui::InputText("##DepartmentSearch", &DepartmentName);
-	hovered |= ImGui::IsItemHovered();
-
-	if (Departments.empty() && hovered)
+	static std::string departmentPreview = "";
+	static int departmentId = -1;
+	if (ImGui::BeginCombo("##DepartmentsList", departmentPreview.c_str()))
 	{
-		ImGui::BeginTooltip();
-
-		ImGui::Text("Department not found, you could create it inside Insert->Departments form");
-		ImGui::EndTooltip();
-	}
-
-	ImGui::Text("Departments: ");
-	ImGui::SameLine();
-	if (ImGui::BeginCombo("##Departments", ""))
-	{
-		for (uint32_t i = 0; i < Departments.size(); ++i)
-		{
-			bool isSelected = selected.find(i) != selected.end();
-			if (ImGui::Selectable(Departments[i], isSelected))
-			{
-				if (!isSelected)
-				{
-					selected.emplace(i);
-				}
-				else
-				{
-					selected.erase(i);
-				}
-			}
-		}
+		FormHandler::getDbConn()->execute(
+			 [](auto&& data) {
+				 using dmitigr::pgfe::to;
+				 std::pair dt{to<int>(data[0]), std::move(to<std::string>(data[1]))};
+				 if (ImGui::Selectable(dt.second.c_str()))
+				 {
+					 departmentId = dt.first;
+					 departmentPreview = std::move(dt.second);
+				 }
+			 },
+			 "SELECT * FROM getdepartments()");
 		ImGui::EndCombo();
 	}
-	hovered |= ImGui::IsItemHovered();
+
 	ImGui::SameLine();
-	ImGui::Text("Types: ");
+	ImGui::Text("Chosen Departments: ");
 	auto typeTextPos = ImGui::GetCursorPos();
-	auto padding = ImGui::GetStyle().WindowPadding;
-	for (auto id : selected)
-	{
-		auto curPos = ImGui::GetCursorPos();
-		if (curPos.x + padding.x + ImGui::CalcTextSize(Departments[id]).x < ImGui::GetWindowSize().x)
-		{
-			ImGui::SameLine();
-		}
-		else
-		{
-			ImGui::SetCursorPosX(typeTextPos.x);
-		}
-		auto samePos = ImGui::GetCursorPos();
-		ImGui::Text(Departments[id]);
-	}
+	// auto padding = ImGui::GetStyle().WindowPadding;
+	// for (auto id : selected)
+	//{
+	//	auto curPos = ImGui::GetCursorPos();
+	//	if (curPos.x + padding.x + ImGui::CalcTextSize(Departments[id]).x < ImGui::GetWindowSize().x)
+	//	{
+	//		ImGui::SameLine();
+	//	}
+	//	else
+	//	{
+	//		ImGui::SetCursorPosX(typeTextPos.x);
+	//	}
+	//	auto samePos = ImGui::GetCursorPos();
+	//	ImGui::Text(Departments[id]);
+	// }
 
 	static bool knownDate = true;
 

@@ -51,7 +51,7 @@ int OwnerInsert::draw()
 			m_errorMessage = "Name is invalid";
 			break;
 		case 3:
-			m_errorMessage = "Name length is exceeds maximum length limit 255";
+			m_errorMessage = "Name length exceeds maximum length limit 255";
 			break;
 		}
 	}
