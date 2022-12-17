@@ -15,7 +15,13 @@ public:
 	void reset() final;
 
 private:
+	uint32_t m_errorCode;
 	std::string_view m_errorMessage;
+
+	std::string m_projectName;
+	std::string m_projectNameSearch;
+	std::string m_projectVersion;
+	std::string m_projectVersionSearch;
 };
 }  // namespace DataGraph::Forms
 #endif
