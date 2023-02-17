@@ -11,9 +11,12 @@ int main()
 	}
 
 #ifdef FORMHANDLER_TESTS
-	::testing::InitGoogleTest();
 
-	return RUN_ALL_TESTS();
+	::testing::InitGoogleTest();
+	auto result = RUN_ALL_TESTS();
+	form.run();
+
+	return result;
 #endif	// DEBUG
 
 	form.run();

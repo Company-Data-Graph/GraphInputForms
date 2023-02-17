@@ -12,7 +12,7 @@
 
 namespace DataGraph
 {
-#ifdef _DEBUG
+#if defined(_DEBUG) && !defined(FORMHANDLER_TESTS)
 int Logger::init()
 {
 	std::ifstream file(LogConfigPath);

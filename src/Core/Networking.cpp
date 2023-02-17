@@ -28,7 +28,6 @@ std::string createHeadersString(const std::unordered_map<std::string, std::strin
 	return headersString;
 }
 
-
 enum class ErrorCodes
 {
 	SUCCESS = 0,
@@ -70,33 +69,27 @@ json parseHeader(std::string_view headerView)
 {
 	json header;
 
-	// Split the header string into lines
 	while (!headerView.empty())
 	{
-		// Find the first '\r\n' sequence in the string
 		std::size_t separatorPos = headerView.find("\r\n");
 		if (separatorPos == std::string::npos)
 		{
-			return false;
+			return {};
 		}
 
-		// Extract the line from the string
 		std::string_view line = headerView.substr(0, separatorPos);
 		headerView.remove_prefix(separatorPos + 2);
 
-		// Find the first ':' character in the line
 		separatorPos = line.find(':');
 		if (separatorPos == std::string::npos)
 		{
 			FormHandler::logs()->error("Networking", "Error: Invalid header line format: {}", line);
-			return false;
+			return {};
 		}
 
-		// Extract the key and value from the line
 		std::string_view key = line.substr(0, separatorPos);
-		std::string_view value = line.substr(separatorPos + 1);
+		std::string_view value = line.substr(separatorPos + 2);
 
-		// Store the key-value pair in the header JSON object
 		header.emplace(key, value);
 	}
 
@@ -109,7 +102,6 @@ bool receiveResponse(SOCKET socket, Response& response)
 	char buffer[BUFFER_SIZE];
 	int result;
 
-	// Receive the response
 	response.header.clear();
 	response.body.clear();
 	response.returnCode = 0;
@@ -125,6 +117,7 @@ bool receiveResponse(SOCKET socket, Response& response)
 		else if (result == 0)
 		{
 			FormHandler::logs()->error("Networking", "Connection closed");
+			return false;
 		}
 		else
 		{
@@ -133,7 +126,6 @@ bool receiveResponse(SOCKET socket, Response& response)
 		}
 	} while (result > 0 && !(result < BUFFER_SIZE));
 
-	// Extract the return code and header
 	std::string_view responseView(responseStr);
 	std::size_t headerPos = responseView.find("\r\n");
 
@@ -153,8 +145,7 @@ bool receiveResponse(SOCKET socket, Response& response)
 		return false;
 	}
 
-	std::string_view headerView(&responseView[headerPos + 2], bodyPos - headerPos - 2);
-	// Parse the header and body into JSON objects
+	std::string_view headerView(&responseView[headerPos + 2], bodyPos - headerPos);
 	try
 	{
 		response.header = parseHeader(headerView);
@@ -179,6 +170,11 @@ bool receiveResponse(SOCKET socket, Response& response)
 
 int sendAll(SOCKET socket, const char* buffer, int length, int flags)
 {
+	if (length <= 0 || socket == INVALID_SOCKET || buffer == nullptr)
+	{
+		return SOCKET_ERROR;
+	}
+
 	int totalSent = 0;
 	while (totalSent < length)
 	{
@@ -199,16 +195,19 @@ bool send_request(SOCKET socket,
 	 Response& response,
 	 bool isPost = true)
 {
-	// Parse the domain name and endpoint from the URL
 	size_t domainStart = url.find("//") + 2;
 	size_t domainEnd = url.find('/', domainStart);
+	if (domainEnd == -1)
+	{
+		domainEnd = url.size();
+	}
+
 	size_t domainNameLength = domainEnd - domainStart;
 	std::string_view domainName(&url[domainStart], domainNameLength);
 
 	size_t endpointStart = domainEnd;
 	std::string_view endpoint(&url[endpointStart], url.length() - endpointStart);
 
-	// Construct the HTTP request
 	static const std::string_view requestTemplate = R"({} {} HTTP/1.1
 Host: {}
 {}Content-Type: text/plain
@@ -219,15 +218,13 @@ Content-Length: {}
 	const std::string requestString
 		 = fmt::format(requestTemplate, requestType, endpoint, domainName, createHeadersString(headers), body.dump().length(), body.dump());
 
-	// Send the request
-	int rresult = sendAll(socket, requestString.data(), requestString.size(), 0);
-	if (rresult == SOCKET_ERROR)
+	int result = sendAll(socket, requestString.data(), requestString.size(), 0);
+	if (result == SOCKET_ERROR)
 	{
 		FormHandler::logs()->error("Networking", "Error sending request: {}", WSAGetLastError());
 		return false;
 	}
 
-	// Receive the response
 	if (!receiveResponse(socket, response))
 	{
 		return false;
@@ -238,7 +235,6 @@ Content-Length: {}
 
 SOCKET createSocket(const std::string_view& address, const std::string_view& port)
 {
-	// Resolve the server address and port
 	addrinfo hints;
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -252,7 +248,6 @@ SOCKET createSocket(const std::string_view& address, const std::string_view& por
 		return INVALID_SOCKET;
 	}
 
-	// Create a socket
 	SOCKET sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 	if (sock == INVALID_SOCKET)
 	{
@@ -264,9 +259,8 @@ SOCKET createSocket(const std::string_view& address, const std::string_view& por
 	return sock;
 }
 
-bool connectSocket(SOCKET socket, const std::string_view& address, const std::string_view& port)
+bool connectSocket(SOCKET socket, const std::string_view& address, const std::string_view& port, int timeout)
 {
-	// Connect to the server
 	addrinfo hints;
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -284,9 +278,51 @@ bool connectSocket(SOCKET socket, const std::string_view& address, const std::st
 	res = connect(socket, result->ai_addr, static_cast<int>(result->ai_addrlen));
 	if (res == SOCKET_ERROR)
 	{
-		FormHandler::logs()->error("Networking", "Error connecting to server: {}", WSAGetLastError());
-		freeaddrinfo(result);
-		return false;
+		int err = WSAGetLastError();
+		if (err != WSAEWOULDBLOCK && err != WSAEINPROGRESS)
+		{
+			FormHandler::logs()->error("Networking", "Error connecting to server: {}", err);
+			freeaddrinfo(result);
+			return false;
+		}
+
+		fd_set writeSet;
+		FD_ZERO(&writeSet);
+		FD_SET(socket, &writeSet);
+
+		timeval timeoutVal;
+		timeoutVal.tv_sec = timeout;
+		timeoutVal.tv_usec = 0;
+
+		res = select(0, nullptr, &writeSet, nullptr, &timeoutVal);
+		if (res == SOCKET_ERROR)
+		{
+			FormHandler::logs()->error("Networking", "Error waiting for connection: {}", WSAGetLastError());
+			freeaddrinfo(result);
+			return false;
+		}
+		else if (res == 0)
+		{
+			FormHandler::logs()->error("Networking", "Connection timeout");
+			freeaddrinfo(result);
+			return false;
+		}
+
+		int optval;
+		int optlen = sizeof(optval);
+		res = getsockopt(socket, SOL_SOCKET, SO_ERROR, (char*)&optval, &optlen);
+		if (res == SOCKET_ERROR)
+		{
+			FormHandler::logs()->error("Networking", "Error getting socket options: {}", WSAGetLastError());
+			freeaddrinfo(result);
+			return false;
+		}
+		else if (optval != 0)
+		{
+			FormHandler::logs()->error("Networking", "Error connecting to server: {}", optval);
+			freeaddrinfo(result);
+			return false;
+		}
 	}
 
 	freeaddrinfo(result);
@@ -295,7 +331,6 @@ bool connectSocket(SOCKET socket, const std::string_view& address, const std::st
 
 bool connectToMediaServer(ConnectionData& mediaServer, Response& response)
 {
-	// Create a socket
 	SOCKET socket = createSocket(mediaServer.ip, mediaServer.port);
 	if (socket == INVALID_SOCKET)
 	{
@@ -303,8 +338,7 @@ bool connectToMediaServer(ConnectionData& mediaServer, Response& response)
 		return false;
 	}
 
-	// Connect to the server
-	if (!connectSocket(socket, mediaServer.ip, mediaServer.port))
+	if (!connectSocket(socket, mediaServer.ip, mediaServer.port, 5))
 	{
 		closesocket(socket);
 		FormHandler::logs()->error("Networking", "MediaServer socket connection has failed.");
@@ -312,7 +346,6 @@ bool connectToMediaServer(ConnectionData& mediaServer, Response& response)
 	}
 
 	std::string mediaServerURL = fmt::format("{}:{}", mediaServer.ip, mediaServer.port);
-	// Send a request to the server
 	bool success = send_request(socket, fmt::format("http://{}/media-server/signin", mediaServerURL), {},
 		 json({{"username", mediaServer.login}, {"password", mediaServer.password}}), response);
 
@@ -333,7 +366,6 @@ int loadFileToHost(std::string_view filePath,
 		return 1;
 	}
 
-	// Create a socket
 	SOCKET psocket = createSocket(proxyServerIp, proxyServerPort);
 	if (psocket == INVALID_SOCKET)
 	{
@@ -341,8 +373,7 @@ int loadFileToHost(std::string_view filePath,
 		return 2;
 	}
 
-	// Connect to the server
-	if (!connectSocket(psocket, proxyServerIp, proxyServerPort))
+	if (!connectSocket(psocket, proxyServerIp, proxyServerPort, 5))
 	{
 		FormHandler::logs()->error("Networking", "ProxyServer socket connection has failed.");
 
@@ -350,8 +381,6 @@ int loadFileToHost(std::string_view filePath,
 		return 3;
 	}
 
-	// Send a request to the server
-	// Response response;
 	success = send_request(psocket, fmt::format("http://{}:{}/loading", proxyServerIp, proxyServerPort), {},
 		 json({{"mediaServerDest", fmt::format("http://{}/media-server/upload", fmt::format("{}:{}", mediaServer.ip, mediaServer.port))},
 			  {"token", response.body["token"].get<std::string>()}, {"filePath", filePath}}),
@@ -364,7 +393,6 @@ int loadFileToHost(std::string_view filePath,
 		return 4;
 	}
 
-	// Clean up
 	closesocket(psocket);
 
 	return 0;

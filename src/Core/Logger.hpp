@@ -24,7 +24,7 @@ public:
 
 	int init();
 
-#ifdef _DEBUG
+#if defined(_DEBUG) && !defined(FORMHANDLER_TESTS)
 	template <typename... Args>
 	void log(const std::string_view& loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
 	{
