@@ -14,11 +14,11 @@ project "glm"
         "include"
     }
 
-	filter "configurations:Debug"
+	filter "configurations:Debug or Test"
 		runtime "Debug"
 		symbols "on"
 
-	filter "configurations:Release or Test"
+	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
 		defines "NDEBUG"

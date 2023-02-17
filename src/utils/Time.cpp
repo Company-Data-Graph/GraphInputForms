@@ -2,11 +2,17 @@
 #include <cstring>
 #include <time.h>
 #include <stdlib.h>
+#include <cassert>
 
 namespace DataGraph::utils
 {
 char* strptime(const char* s, const char* format, struct tm* tm)
 {
+	if (tm == nullptr || format == nullptr)
+	{
+		return (char*)s;
+	}
+
 	memset(tm, 0, sizeof(*tm));
 
 	while (*format)

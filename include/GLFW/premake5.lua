@@ -32,11 +32,12 @@
 		"_CRT_SECURE_NO_WARNINGS"
 	}
 
-	filter "configurations:Debug"
+	filter "configurations:Debug or Test"
 		runtime "Debug"
 		symbols "on"
+		defines "_DEBUG"
 
-	filter "configurations:Release or Test"
+	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
 		defines "NDEBUG"

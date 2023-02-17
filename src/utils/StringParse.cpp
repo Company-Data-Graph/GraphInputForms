@@ -15,7 +15,7 @@ std::string parseDepartments(const std::unordered_map<std::string, uint32_t>& ch
 		{
 			parseString += std::to_string(id) + ',';
 		}
-		parseString.back() = '\0';
+		parseString.pop_back();
 	}
 
 	return parseString;

@@ -76,7 +76,7 @@ project "Tool"
 		"libs/PostgreSQL/libcrypto-1_1-x64.dll",
 		"libs/PostgreSQL/libiconv-2.dll",
 		"libs/PostgreSQL/libpq.dll",
-		"libs/PostgreSQL/libpq",
+		"libs/PostgreSQL/libpq"
 	}
 
 	defines 
@@ -87,12 +87,11 @@ project "Tool"
 		"UNICODE"
 	}
 
-	filter "configurations:Debug"
+
+	filter "configurations:Debug or Test"
 		runtime "Debug"
 		symbols "On"
 		links "libs/PostgreSQL/pgfed"
-		debugdir 'libs/PostgreSQL'
-		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Debug")
 	
 		defines
 		{
@@ -100,7 +99,8 @@ project "Tool"
 			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG"
 		}
 
-	filter "configurations:Release or Test"
+	filter "configurations:Release"
+		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Release")
 		runtime "Release"
 		optimize "On"
 
@@ -111,13 +111,13 @@ project "Tool"
 			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF",
 			"STBI_NO_FAILURE_STRINGS"
 		}
-	
+	 
 	filter "configurations:Test"
 		defines "FORMHANDLER_TESTS"
 		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Test")
+		files "tests/**.cpp"
 
-	filter "configurations:Release"
-		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Release")
-
+	filter "configurations:Debug"
+		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Debug")
 
 require "scripts/actions"

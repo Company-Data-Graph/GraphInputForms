@@ -166,7 +166,11 @@ namespace testing {
 
 // Silence C4100 (unreferenced formal parameter) and 4805
 // unsafe mix of type 'const int' and type 'const bool'
-GTEST_DISABLE_MSC_WARNINGS_PUSH_(4805 4100)
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4805)
+#pragma warning(disable : 4100)
+#endif
 
 // The upper limit for valid stack trace depths.
 const int kMaxStackTraceDepth = 100;
@@ -197,8 +201,8 @@ std::set<std::string>* GetIgnoredParameterizedTestSuites();
 class GTestNonCopyable {
  public:
   GTestNonCopyable() = default;
-  GTestNonCopyable(const GTestNonCopyable&) = delete;
-  GTestNonCopyable& operator=(const GTestNonCopyable&) = delete;
+  GTestNonCopyable(const GTestNonCopyable &) = delete;
+  GTestNonCopyable &operator=(const GTestNonCopyable &) = delete;
   ~GTestNonCopyable() = default;
 };
 
@@ -297,13 +301,7 @@ class GTEST_API_ Test {
   // SetUp/TearDown method of Environment objects registered with Google
   // Test) will be output as attributes of the <testsuites> element.
   static void RecordProperty(const std::string& key, const std::string& value);
-  // We do not define a custom serialization except for values that can be
-  // converted to int64_t, but other values could be logged in this way.
-  template <typename T, std::enable_if_t<std::is_convertible<T, int64_t>::value,
-                                         bool> = true>
-  static void RecordProperty(const std::string& key, const T& value) {
-    RecordProperty(key, (Message() << static_cast<int64_t>(value)).GetString());
-  }
+  static void RecordProperty(const std::string& key, int64_t value);
 
  protected:
   // Creates a Test object.
@@ -2216,7 +2214,9 @@ GTEST_API_ std::string TempDir();
 // in it should be considered read-only.
 GTEST_API_ std::string SrcDir();
 
-GTEST_DISABLE_MSC_WARNINGS_POP_()  // 4805 4100
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 // Dynamically registers a test with the framework.
 //

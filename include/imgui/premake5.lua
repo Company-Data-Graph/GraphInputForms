@@ -15,14 +15,14 @@ project "imgui"
 		"../glad/include"
 	}
 
-	filter  "configurations:Debug or Release"
+	filter  "configurations:not Test"
 		removefiles { "imgui_te*.h", "imgui_te*.cpp", "imgui_capture_tool.h", "imgui_capture_tool.cpp", "thirdparty/**.*" }
 
-	filter "configurations:Debug"
+	filter "configurations:Debug or Test"
 		runtime "Debug"
 		symbols "on"
 
-	filter "configurations:Release or Test"
+	filter "configurations:Release"
 		runtime "Release"
 		optimize "on"
 		defines "NDEBUG"

@@ -27,3 +27,5 @@ out/
 
 #PVS-Studio files
 *.PVS-Studio*
+
+test-temp/
