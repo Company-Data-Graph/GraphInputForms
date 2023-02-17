@@ -1,12 +1,12 @@
 #include "OwnerDeleteForm.hpp"
 
 #include <imgui.h>
-#include <imgui_internal.h>
 #include <imgui_stdlib.h>
-#include <iostream>
 #include <string>
 #include <unordered_map>
+
 #include <Core/FormHandler.hpp>
+#include <utils/UIModules.hpp>
 
 namespace DataGraph::Forms
 {
@@ -27,36 +27,12 @@ int OwnerDelete::draw()
 		}
 	}
 
-	ImGui::Text("Owner name: ");
-	ImGui::SameLine();
-	static std::string preview = "";
-	static int curId = -1;
-	if (ImGui::BeginCombo("##OwnersList", preview.c_str()))
-	{
-		FormHandler::getDbConn()->execute(
-			 [](auto&& data) {
-				 using dmitigr::pgfe::to;
-				 std::pair dt{to<int>(data[0]), std::move(to<std::string>(data[1]))};
-				 if (ImGui::Selectable(dt.second.c_str()))
-				 {
-					 curId = dt.first;
-					 preview = std::move(dt.second);
-				 }
-			 },
-			 "SELECT * FROM getownerslist($1)", m_ownerSearch);
-		ImGui::EndCombo();
-	}
-
-	ImGui::SameLine();
-	ImGui::Text("Owner search by name: ");
-	ImGui::SameLine();
-	ImGui::PushItemWidth(250);
-	ImGui::InputText("##OwnerSearch", &m_ownerSearch);
+	utils::ownerComboBox(name(), m_ownerId, m_ownerNamePreview, m_ownerSearch);
 
 	ImGui::PushStyleColor(ImGuiCol_Button, {0.6, 0, 0, 1});
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2, 0, 0, 1});
 
-	if (curId != -1 && ImGui::Button("Delete"))
+	if (m_ownerId != -1 && ImGui::Button("Delete"))
 	{
 		std::string* companyName = &m_companyErrorName;
 		FormHandler::getDbConn()->execute(
@@ -64,7 +40,7 @@ int OwnerDelete::draw()
 				 using dmitigr::pgfe::to;
 				 *companyName = std::move(to<std::string>(data["name"]));
 			 },
-			 "SELECT * FROM getcompanies(ownersearchid=>$1) LIMIT 1", curId);
+			 "SELECT * FROM getcompanies(ownersearchid=>$1) LIMIT 1", m_ownerId);
 
 		if (!m_companyErrorName.empty())
 		{
@@ -79,7 +55,7 @@ int OwnerDelete::draw()
 					 using dmitigr::pgfe::to;
 					 *code = to<int>(data[0]);
 				 },
-				 "SELECT * FROM deleteowner($1)", curId);
+				 "SELECT * FROM deleteowner($1)", m_ownerId);
 
 			switch (m_errorCode)
 			{
@@ -90,8 +66,8 @@ int OwnerDelete::draw()
 				m_errorMessage = "Ivalid value selected, maybe it was removed or updated earlier, please try again.";
 				break;
 			}
-			preview = "";
-			curId = -1;
+			m_ownerNamePreview = "";
+			m_ownerId = -1;
 		}
 	}
 
@@ -124,7 +100,7 @@ int OwnerDelete::draw()
 	return 0;
 }
 
-const char* OwnerDelete::name() const { return "Owner"; }
+const char* OwnerDelete::name() const { return "Owners"; }
 void OwnerDelete::reset()
 {
 	m_companyErrorName = "";

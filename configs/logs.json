@@ -5,6 +5,11 @@
 		"Name": "Core",
 		"Pattern": "%^[%n] [%H:%M:%S:%e]%$ %v",
 		"Enabled": true
+	},
+	{
+		"Name": "Networking",
+		"Pattern": "%^[%n] [%H:%M:%S:%e]%$ %v",
+		"Enabled": true
 	}
 	]
 }

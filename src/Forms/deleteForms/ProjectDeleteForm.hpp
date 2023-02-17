@@ -18,8 +18,11 @@ private:
 	uint32_t m_errorCode;
 	std::string_view m_errorMessage;
 
+	uint32_t m_projectId = -1;
 	std::string m_projectName;
 	std::string m_projectNameSearch;
+
+	uint32_t m_nodeId = -1;
 	std::string m_projectVersion;
 	std::string m_projectVersionSearch;
 };

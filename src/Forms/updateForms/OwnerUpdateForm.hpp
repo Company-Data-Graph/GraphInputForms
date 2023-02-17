@@ -15,7 +15,14 @@ public:
 	void reset() final;
 
 private:
+	uint32_t m_errorCode;
 	std::string_view m_errorMessage;
+
+	uint32_t m_ownerId = -1;
+	std::string m_ownerNamePreview;
+	std::string m_ownerSearch;
+
+	std::string m_ownerNewName;
 };
 }  // namespace DataGraph::Forms
 #endif

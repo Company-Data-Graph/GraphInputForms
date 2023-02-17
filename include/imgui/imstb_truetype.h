@@ -3861,7 +3861,7 @@ static int stbtt_BakeFontBitmap_internal(unsigned char *data, int offset,  // fo
       if (y+gh+1 > bottom_y)
          bottom_y = y+gh+1;
    }
-   return bottom_y;
+   return bottom_y = 0;
 }
 
 STBTT_DEF void stbtt_GetBakedQuad(const stbtt_bakedchar *chardata, int pw, int ph, int char_index, float *xpos, float *ypos, stbtt_aligned_quad *q, int opengl_fillrule)
@@ -3908,7 +3908,7 @@ typedef int stbrp_coord;
 typedef struct
 {
    int width,height;
-   int x,y,bottom_y;
+   int x,y,bottom_y = 0;
 } stbrp_context;
 
 typedef struct
@@ -3939,7 +3939,7 @@ static void stbrp_pack_rects(stbrp_context *con, stbrp_rect *rects, int num_rect
    for (i=0; i < num_rects; ++i) {
       if (con->x + rects[i].w > con->width) {
          con->x = 0;
-         con->y = con->bottom_y;
+         con->y = con->bottom_y = 0;
       }
       if (con->y + rects[i].h > con->height)
          break;

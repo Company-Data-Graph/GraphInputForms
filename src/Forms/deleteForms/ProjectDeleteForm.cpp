@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <Core/FormHandler.hpp>
+#include <utils/UIModules.hpp>
 
 namespace DataGraph::Forms
 {
@@ -15,75 +16,29 @@ int ProjectDelete::init() { return 0; }
 
 int ProjectDelete::draw()
 {
-	static int curProjectId = -1;
-	static int curNodeId = -1;
-
 	if (!m_errorMessage.empty())
 	{
-		ImGui::TextColored({0.9, 0, 0, 1}, "Error has occurred: \"%s\"", m_errorMessage.data());
+		if (m_errorCode > 0)
+		{
+			ImGui::TextColored({0.9, 0, 0, 1}, "Error has occurred: \"%s\"", m_errorMessage.data());
+		}
+		else
+		{
+			ImGui::TextColored({0, 0.9, 0, 1}, "%s", m_errorMessage.data());
+		}
 	}
 
+	uint32_t prevFindProjectId = m_projectId;
+	utils::inputProjectName(name(), m_projectId, m_projectName, m_projectNameSearch);
+	if (prevFindProjectId != -1 && m_projectId != prevFindProjectId)
 	{
-		ImGui::Text("Project name: ");
-		ImGui::SameLine();
-		if (ImGui::BeginCombo("##ProjectNameList", m_projectName.c_str()))
-		{
-			auto* prjName = &m_projectName;
-			FormHandler::getDbConn()->execute(
-				 [prjName](auto&& data) {
-					 using dmitigr::pgfe::to;
-					 std::pair dt{to<int>(data[0]), std::move(to<std::string>(data[1]))};
-					 if (ImGui::Selectable(dt.second.c_str()))
-					 {
-						 curProjectId = dt.first;
-						 *prjName = std::move(dt.second);
-					 }
-				 },
-				 "SELECT * FROM getProjectListNames($1)", m_projectNameSearch);
-			ImGui::EndCombo();
-		}
-
-		ImGui::SameLine();
-		ImGui::Text("Project search by name: ");
-		ImGui::SameLine();
-		ImGui::PushItemWidth(250);
-		ImGui::InputText("##ProjectNameSearch", &m_projectNameSearch);
+		m_nodeId = -1;
+		m_projectVersion.clear();
 	}
 
 	if (!m_projectName.empty())
 	{
-		ImGui::Text("Project Version: ");
-		ImGui::SameLine();
-		if (ImGui::BeginCombo("##ProjectVersionList", m_projectVersion.c_str()))
-		{
-			auto* prjVersion = &m_projectVersion;
-			try
-			{
-				FormHandler::getDbConn()->execute(
-					 [prjVersion](auto&& data) {
-						 using dmitigr::pgfe::to;
-						 std::pair dt{to<int>(data["nodeid"]), std::move(to<std::string>(data["version"]))};
-						 if (ImGui::Selectable(dt.second.c_str()))
-						 {
-							 curNodeId = dt.first;
-							 *prjVersion = std::move(dt.second);
-						 }
-					 },
-					 "SELECT * FROM getprojects2(searchprojectid=>$1, namesearch=>$2, searchversion=>$3)", curProjectId, m_projectName,
-					 m_projectVersionSearch);
-			}
-			catch (std::exception& ex)
-			{
-				std::cout << ex.what();
-			}
-			ImGui::EndCombo();
-		}
-
-		ImGui::SameLine();
-		ImGui::Text("Project version search: ");
-		ImGui::SameLine();
-		ImGui::PushItemWidth(350);
-		ImGui::InputText("##ProjectVersionSearch", &m_projectVersionSearch);
+		utils::inputProjectVersion(name(), m_projectId, m_projectName, m_nodeId, m_projectVersion, m_projectVersionSearch);
 	}
 
 	ImGui::PushStyleColor(ImGuiCol_Button, {0.6, 0, 0, 1});
@@ -96,23 +51,17 @@ int ProjectDelete::draw()
 				 using dmitigr::pgfe::to;
 				 *errorCode = to<int>(data[0]);
 			 },
-			 "SELECT * FROM deleteproject(nodeid=>$1) LIMIT 1", curNodeId);
+			 "SELECT * FROM deleteproject(nodeid=>$1) LIMIT 1", m_nodeId);
 
 		switch (m_errorCode)
 		{
 		case 0:
-			m_projectName = "";
-			m_projectVersion = "";
-			curNodeId = -1;
-			curProjectId = -1;
+			reset();
 			m_errorMessage = "Value has been successfully deleted";
 			break;
 		case 1:
-			m_projectName = "";
-			m_projectVersion = "";
-			curNodeId = -1;
-			curProjectId = -1;
-			m_errorMessage = "Ivalid value selected, maybe it was removed or updated earlier, please try again.";
+			reset();
+			m_errorMessage = "Invalid value selected, maybe it was removed or updated earlier, please try again.";
 			break;
 		case 2:
 			ImGui::OpenPopup("Help");
@@ -146,29 +95,29 @@ int ProjectDelete::draw()
 
 		if (ImGui::Button("Agree"))
 		{
-			uint32_t* errorCode = &m_errorCode;
-			FormHandler::getDbConn()->execute(
-				 [errorCode](auto&& data) {
-					 using dmitigr::pgfe::to;
-					 *errorCode = to<int>(data[0]);
-				 },
-				 "SELECT * FROM deleteproject(nodeid=>$1, force=>TRUE) LIMIT 1", curNodeId);
+			try
+			{
+				uint32_t* errorCode = &m_errorCode;
+				FormHandler::getDbConn()->execute(
+					 [errorCode](auto&& data) {
+						 using dmitigr::pgfe::to;
+						 *errorCode = to<int>(data[0]);
+					 },
+					 "SELECT * FROM deleteproject(nodeid=>$1, force=>TRUE) LIMIT 1", m_nodeId);
+			}
+			catch (std::exception& ex)
+			{
+				FormHandler::logs()->error("Core", ex.what());
+			}
 
+			reset();
 			switch (m_errorCode)
 			{
 			case 0:
-				m_projectName = "";
-				m_projectVersion = "";
-				curNodeId = -1;
-				curProjectId = -1;
 				m_errorMessage = "Value has been successfully deleted";
 				break;
 			case 1:
-				m_projectName = "";
-				m_projectVersion = "";
-				curNodeId = -1;
-				curProjectId = -1;
-				m_errorMessage = "Ivalid value selected, maybe it was removed or updated earlier, please try again.";
+				m_errorMessage = "Invalid value selected, maybe it was removed or updated earlier, please try again.";
 				break;
 			}
 
@@ -184,6 +133,14 @@ int ProjectDelete::draw()
 
 const char* ProjectDelete::name() const { return "Projects"; }
 
-void ProjectDelete::reset() {}
+void ProjectDelete::reset()
+{
+	m_projectName = "";
+	m_projectNameSearch.clear();
+	m_projectVersion = "";
+	m_projectVersionSearch.clear();
+	m_nodeId = -1;
+	m_projectId = -1;
+}
 
 }  // namespace DataGraph::Forms

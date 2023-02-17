@@ -24,10 +24,12 @@ std::unique_ptr<Logger> FormHandler::loggers;
 std::unique_ptr<UI> FormHandler::ui;
 FormHandler::Window FormHandler::window;
 std::unique_ptr<dmitigr::pgfe::Connection> FormHandler::dbConnection;
+std::unique_ptr<ConnectionData> FormHandler::medServConn;
 
 std::unique_ptr<Logger>& FormHandler::logs() { return FormHandler::loggers; }
 std::unique_ptr<UI>& FormHandler::getUI() { return FormHandler::ui; }
 std::unique_ptr<dmitigr::pgfe::Connection>& FormHandler::getDbConn() { return FormHandler::dbConnection; }
+std::unique_ptr<ConnectionData>& FormHandler::getMedServConn() { return FormHandler::medServConn; }
 
 void glfwCallbackFunction(int glfwErrorCode, const char* description)
 {
@@ -65,6 +67,30 @@ int FormHandler::init(bool resizeAble)
 {
 	setWorkingDirectory();
 
+	// Initialize Winsock
+	WSADATA wsa_data;
+	int sockResult = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+	if (sockResult != 0)
+	{
+		FormHandler::logs()->error("Core", "Error initializing Winsock: {}", sockResult);
+		return -1;
+	}
+
+	// Set up the STARTUPINFO structure
+	STARTUPINFO si;
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+
+	// Set up the PROCESS_INFORMATION structure
+	ZeroMemory(&m_proxy, sizeof(m_proxy));
+
+	// Create the process
+	if (!CreateProcess(L"proxy\\data-loader.exe", NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &m_proxy))
+	{
+		FormHandler::logs()->error("Core", "Failed to create process: {}", GetLastError());
+		return 1;
+	}
+
 	FormHandler::loggers = std::make_unique<Logger>();
 	auto result = loggers->init();
 	assert(result == 0);
@@ -85,8 +111,7 @@ int FormHandler::init(bool resizeAble)
 	if (!window.window)
 	{
 		FormHandler::logs()->error("Core", "Window initialization has failed.");
-
-		return -1;
+		return -2;
 	}
 
 	glfwSetWindowUserPointer(window.window, &data);
@@ -144,6 +169,18 @@ FormHandler::~FormHandler()
 	{
 		glfwTerminate();
 	}
+
+	WSACleanup();
+
+	// Terminate the process
+	TerminateProcess(m_proxy.hProcess, 0);
+
+	// Wait for the process to finish
+	WaitForSingleObject(m_proxy.hProcess, INFINITE);
+
+	// Close the handles
+	CloseHandle(m_proxy.hProcess);
+	CloseHandle(m_proxy.hThread);
 }
 
 FormHandler::Window& FormHandler::getWindow() { return window; }

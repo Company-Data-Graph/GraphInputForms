@@ -16,6 +16,9 @@ public:
 private:
 	int m_errorCode;
 	std::string_view m_errorMessage;
+
+	uint32_t m_departmentId = -1;
+	std::string m_departmentPreview;
 };
 }  // namespace DataGraph::Forms
 #endif

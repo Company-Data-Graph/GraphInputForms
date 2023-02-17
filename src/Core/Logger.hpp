@@ -2,8 +2,8 @@
 #define DATAGRAPHTOOL_CORE_LOGGER_H__
 
 #include <spdlog/logger.h>
-#include <spdlog/fmt/bundled/color.h>
-#include <spdlog/fmt/bundled/format.h>
+#include <fmt/color.h>
+#include <fmt/format.h>
 
 #include <string>
 #include <unordered_map>

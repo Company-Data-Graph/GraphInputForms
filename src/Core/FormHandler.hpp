@@ -6,6 +6,9 @@
 #include "Logger.hpp"
 #include "UI.hpp"
 
+#include <Forms/AuthForm.hpp>
+
+#include <Windows.h>
 #include <pgfe/pgfe.hpp>
 
 class GLFWwindow;
@@ -24,6 +27,7 @@ public:
 	static std::unique_ptr<Logger>& logs();
 	static std::unique_ptr<UI>& getUI();
 	static std::unique_ptr<dmitigr::pgfe::Connection>& getDbConn();
+	static std::unique_ptr<ConnectionData>& getMedServConn();
 
 	int init(bool resizeAble = true);
 	void run();
@@ -31,8 +35,8 @@ public:
 	struct WindowData
 	{
 		std::string title;
-		uint32_t width;
-		uint32_t height;
+		uint32_t width = -1;
+		uint32_t height = -1;
 
 		bool closed = false;
 		bool minimized = false;
@@ -54,6 +58,9 @@ private:
 	static std::unique_ptr<Logger> loggers;
 	static std::unique_ptr<UI> ui;
 	static std::unique_ptr<dmitigr::pgfe::Connection> dbConnection;
+	static std::unique_ptr<ConnectionData> medServConn;
+
+	PROCESS_INFORMATION m_proxy;
 
 	friend class UI;
 };

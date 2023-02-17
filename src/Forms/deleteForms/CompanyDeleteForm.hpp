@@ -16,9 +16,11 @@ public:
 	void reset() final;
 
 private:
+	int m_errorCode;
 	std::string_view m_errorMessage;
 
-	int m_errorCode;
+	uint32_t m_companyId = -1;
+	std::string m_companyNamePreview;
 	std::string m_companySearch;
 };
 }  // namespace DataGraph::Forms

@@ -4,10 +4,13 @@
 #include <pgfe/pgfe.hpp>
 #include <string_view>
 #include <memory>
-namespace dmitigr::pgfe
+struct ConnectionData
 {
-class Connection;
-}
+	std::string ip;
+	std::string port;
+	std::string login;
+	std::string password;
+};
 
 namespace DataGraph::Forms
 {
@@ -18,17 +21,8 @@ public:
 	int draw();
 
 private:
-	std::unique_ptr<dmitigr::pgfe::Connection> m_conn;
-
-	std::string m_databaseIP;
-	std::string m_databasePort;
-	std::string m_databaseLogin;
-	std::string m_databasePassword;
-
-	std::string m_mediaServerIP;
-	std::string m_mediaServerPort;
-	std::string m_mediaServerLogin;
-	std::string m_mediaServerPassword;
+	ConnectionData m_database;
+	ConnectionData m_mediaServer;
 
 	int m_errorCode;
 	std::string m_errorMessage;

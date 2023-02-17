@@ -298,7 +298,7 @@ void UI::beginFrame()
 	ImGui::SetNextWindowSize(viewport->Size);
 	ImGui::SetNextWindowViewport(viewport->ID);
 
-	ImGui::Begin("GraphFormWindow", nullptr, ImGuiWindowFlags_NoTitleBar);
+	ImGui::Begin("GraphFormWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 	ImGui::BeginTabBar("GraphForms");
 
 	if (ImGui::BeginTabItem("AuthForm"))
@@ -311,11 +311,13 @@ void UI::beginFrame()
 	{
 		for (auto form : forms)
 		{
+			ImGui::PushID(form->name());
 			if (ImGui::BeginTabItem(form->name()))
 			{
 				form->draw();
 				ImGui::EndTabItem();
 			}
+			ImGui::PopID();
 		}
 	}
 

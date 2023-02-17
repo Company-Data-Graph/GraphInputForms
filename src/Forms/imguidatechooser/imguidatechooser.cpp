@@ -189,7 +189,6 @@ bool DateChooser(const char* label,
 
 	ImGui::SetNextWindowSize(ImVec2(w, w));
 	ImGui::SetNextWindowSizeConstraints(ImVec2(w, popup_height + 35), ImVec2(w, popup_height + 35));
-
 	if (!ImGui::BeginCombo(label, currentText, 0))
 		return value_changed;
 

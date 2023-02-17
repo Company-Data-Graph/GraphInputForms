@@ -1,9 +1,12 @@
+require "scripts/functions"
+
 workspace "DataGraphDataLoadTool"
 	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-
+	projectName = "Tool"
+	local wrkDir = path.getabsolute(".")
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("obj/" .. outputdir .. "/%{prj.name}")
-
+	print(wrkDir)
 	architecture "x86_64"
 	staticruntime "on"
 	flags "MultiProcessorCompile"
@@ -38,7 +41,9 @@ project "Tool"
 		"include/postgres/include/**.h",
 		"include/postgres/interfaces/**.h",
 		"include/pgfe/src/**.h",
-		"include/pgfe/src/**.hpp"
+		"include/pgfe/src/**.hpp",
+		"include/fmt/src/*.cc",
+		"include/fmt/include/**.h"
 	}
 
 	includedirs
@@ -52,27 +57,23 @@ project "Tool"
 		"include/json",
 		"include/postgres/include",
 		"include/postgres/interfaces",
-		"include/pgfe/src"
+		"include/pgfe/src",
+		"include/fmt/include"
     }
-	
-	libdirs {
-		"libs/OpenSSL",
-		"libs/PostgreSQL"
-	}	
 
 	links 
 	{ 
 		"GLFW",
 		"glad",
 		"imgui",
-		"libcrypto-3-x64.dll",
-		"libssl-3-x64.dll",
-		"libiconv-2.dll",
-		"libintl-9.dll",
-		"libpq",
-		"libpq.dll",
-		"libwinpthread-1.dll",
-		"Ws2_32"
+		"Ws2_32",
+		"libs/PostgreSQL/libintl-9.dll",
+		"libs/PostgreSQL/libssl-1_1-x64.dll",
+		"libs/PostgreSQL/libwinpthread-1.dll",
+		"libs/PostgreSQL/libcrypto-1_1-x64.dll",
+		"libs/PostgreSQL/libiconv-2.dll",
+		"libs/PostgreSQL/libpq.dll",
+		"libs/PostgreSQL/libpq",
 	}
 
 	defines 
@@ -84,61 +85,30 @@ project "Tool"
 	}
 
 	filter "configurations:Debug"
+		runtime "Debug"
+		symbols "On"
+		links "libs/PostgreSQL/pgfed"
+		debugdir 'libs/PostgreSQL'
+		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Debug")
+	
 		defines
 		{
 			"_DEBUG",
 			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG"
-		}	
-		links
-		{
-			"libs/PostgreSQL/pgfed"
 		}
-		runtime "Debug"
-		symbols "On"
 
 	filter "configurations:Release"
 		runtime "Release"
 		optimize "On"
+		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Release")
+
+		links "libs/PostgreSQL/pgfe"
 		defines
 		{
 			"NDEBUG",
 			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF",
 			"STBI_NO_FAILURE_STRINGS"
 		}
-		links
-		{
-			"libs/PostgreSQL/pgfe"
-		}
 
-newaction {
-   trigger     = "clean",
-   description = "clean the software",
-   execute     = function ()
-      print("Clean premakefiles...")
-	  
-	  print("Cleaning Visual studio files")
-	  os.rmdir(".vs")
-	  os.remove("*.sln")
-      os.remove("**.vcxproj*")
-	  print("Done")
-	  
-	  print("Cleaning compiled files")
-	  os.rmdir("bin")
-	  os.rmdir("obj")
-	  print("Done")
-	  
-	  print("Cleaning makefiles")
-	  os.remove("**Makefile")
-	  os.remove("**.make")
-	  print("Done")
-	  
-	  print("Cleaning cmake")
-	  os.rmdir("**CMakeFiles/")
-	  os.remove("*CMakeFiles")
-	  os.remove("*CMakeCache.txt")
-	  os.remove("**.cmake")
-	  print("Done")
-	  
-      print("Cleaning done.")
-   end
-}
+
+require "scripts/actions"

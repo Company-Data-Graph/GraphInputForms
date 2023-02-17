@@ -19,6 +19,9 @@ private:
 	std::string_view m_errorMessage;
 
 	int m_errorCode;
+
+	uint32_t m_ownerId = -1;
+	std::string m_ownerNamePreview;
 	std::string m_ownerSearch;
 };
 }  // namespace DataGraph::Forms
