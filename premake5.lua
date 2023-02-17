@@ -6,7 +6,6 @@ workspace "DataGraphDataLoadTool"
 	local wrkDir = path.getabsolute(".")
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("obj/" .. outputdir .. "/%{prj.name}")
-	print(wrkDir)
 	architecture "x86_64"
 	staticruntime "on"
 	flags "MultiProcessorCompile"
@@ -15,13 +14,15 @@ workspace "DataGraphDataLoadTool"
 	configurations
 	{
 		"Release",
-		"Debug"
+		"Debug",
+		"Test"
 	}
 	
 group "Dependencies"
 	include  "include/glad"
 	include  "include/GLFW"
 	include  "include/imgui"
+	include  "include/gtest"
 group ""
 
 project "Tool"
@@ -58,7 +59,8 @@ project "Tool"
 		"include/postgres/include",
 		"include/postgres/interfaces",
 		"include/pgfe/src",
-		"include/fmt/include"
+		"include/fmt/include",
+		"include/gtest/include"
     }
 
 	links 
@@ -67,6 +69,7 @@ project "Tool"
 		"glad",
 		"imgui",
 		"Ws2_32",
+		"gtest",
 		"libs/PostgreSQL/libintl-9.dll",
 		"libs/PostgreSQL/libssl-1_1-x64.dll",
 		"libs/PostgreSQL/libwinpthread-1.dll",
@@ -97,10 +100,9 @@ project "Tool"
 			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG"
 		}
 
-	filter "configurations:Release"
+	filter "configurations:Release or Test"
 		runtime "Release"
 		optimize "On"
-		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Release")
 
 		links "libs/PostgreSQL/pgfe"
 		defines
@@ -109,6 +111,13 @@ project "Tool"
 			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF",
 			"STBI_NO_FAILURE_STRINGS"
 		}
+	
+	filter "configurations:Test"
+		defines "FORMHANDLER_TESTS"
+		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Test")
+
+	filter "configurations:Release"
+		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Release")
 
 
 require "scripts/actions"

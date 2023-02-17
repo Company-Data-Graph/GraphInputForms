@@ -15,9 +15,10 @@ project "glad"
     }
     
     filter "configurations:Debug"
-        runtime "Debug"
-        symbols "on"
+		runtime "Debug"
+		symbols "on"
 
-    filter "configurations:Release"
-        runtime "Release"
-        optimize "on"
+	filter "configurations:Release or Test"
+		runtime "Release"
+		optimize "on"
+		defines "NDEBUG"

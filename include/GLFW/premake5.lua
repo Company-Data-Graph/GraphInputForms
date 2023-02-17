@@ -36,6 +36,7 @@
 		runtime "Debug"
 		symbols "on"
 
-	filter "configurations:Release"
+	filter "configurations:Release or Test"
 		runtime "Release"
 		optimize "on"
+		defines "NDEBUG"

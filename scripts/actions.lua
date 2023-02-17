@@ -97,7 +97,8 @@ newoption
     category    = "Build Options",
     allowed = {
         { "Debug",    "Debug" },
-        { "Release",  "Release" }
+        { "Release",  "Release" },
+        { "Test", "Test" }
     },
 }
  
@@ -108,10 +109,7 @@ newaction
     execute = function ()
         for k, v in pairs(projectDlls)
         do
-            local configuration = "Release"
-            if _OPTIONS["configuration"] == "Debug" then
-                configuration = "Debug"
-            end
+            local configuration = _OPTIONS["configuration"]
  
             local pth = find_directory("bin", configuration .. "-*")
             if not pth then return end
