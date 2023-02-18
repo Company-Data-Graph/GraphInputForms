@@ -96,7 +96,6 @@ project "Tool"
 		defines
 		{
 			"_DEBUG",
-			"SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG"
 		}
 
 	filter "configurations:Release"
@@ -116,8 +115,10 @@ project "Tool"
 		defines "FORMHANDLER_TESTS"
 		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Test")
 		files "tests/**.cpp"
+		defines "SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF"
 
 	filter "configurations:Debug"
 		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Debug")
+		defines "SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG"
 
 require "scripts/actions"

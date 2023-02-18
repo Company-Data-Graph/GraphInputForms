@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 
-int main()
+int main(int argc, char** argv)
 {
 	DataGraph::FormHandler form;
 	if (form.init() != 0)
@@ -12,9 +12,8 @@ int main()
 
 #ifdef FORMHANDLER_TESTS
 
-	::testing::InitGoogleTest();
+	::testing::InitGoogleTest(&arc, argv);
 	auto result = RUN_ALL_TESTS();
-	form.run();
 
 	return result;
 #endif	// DEBUG
