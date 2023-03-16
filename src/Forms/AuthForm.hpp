@@ -4,13 +4,8 @@
 #include <pgfe/pgfe.hpp>
 #include <string_view>
 #include <memory>
-struct ConnectionData
-{
-	std::string ip;
-	std::string port;
-	std::string login;
-	std::string password;
-};
+
+#include <core/Networking.hpp>
 
 namespace DataGraph::Forms
 {
@@ -21,8 +16,8 @@ public:
 	int draw();
 
 private:
-	ConnectionData m_database;
-	ConnectionData m_mediaServer;
+	Networking::ConnectionData m_database;
+	Networking::ConnectionData m_mediaServer;
 
 	int m_errorCode;
 	std::string m_errorMessage;

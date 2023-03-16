@@ -24,12 +24,12 @@ std::unique_ptr<Logger> FormHandler::loggers;
 std::unique_ptr<UI> FormHandler::ui;
 FormHandler::Window FormHandler::window;
 std::unique_ptr<dmitigr::pgfe::Connection> FormHandler::dbConnection;
-std::unique_ptr<ConnectionData> FormHandler::medServConn;
+std::unique_ptr<Networking::ConnectionData> FormHandler::medServConn;
 
 std::unique_ptr<Logger>& FormHandler::logs() { return FormHandler::loggers; }
 std::unique_ptr<UI>& FormHandler::getUI() { return FormHandler::ui; }
 std::unique_ptr<dmitigr::pgfe::Connection>& FormHandler::getDbConn() { return FormHandler::dbConnection; }
-std::unique_ptr<ConnectionData>& FormHandler::getMedServConn() { return FormHandler::medServConn; }
+std::unique_ptr<Networking::ConnectionData>& FormHandler::getMedServConn() { return FormHandler::medServConn; }
 
 void glfwCallbackFunction(int glfwErrorCode, const char* description)
 {

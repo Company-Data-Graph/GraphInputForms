@@ -27,7 +27,7 @@ public:
 	static std::unique_ptr<Logger>& logs();
 	static std::unique_ptr<UI>& getUI();
 	static std::unique_ptr<dmitigr::pgfe::Connection>& getDbConn();
-	static std::unique_ptr<ConnectionData>& getMedServConn();
+	static std::unique_ptr<Networking::ConnectionData>& getMedServConn();
 
 	int init(bool resizeAble = true);
 	void run();
@@ -58,7 +58,7 @@ private:
 	static std::unique_ptr<Logger> loggers;
 	static std::unique_ptr<UI> ui;
 	static std::unique_ptr<dmitigr::pgfe::Connection> dbConnection;
-	static std::unique_ptr<ConnectionData> medServConn;
+	static std::unique_ptr<Networking::ConnectionData> medServConn;
 
 	PROCESS_INFORMATION m_proxy;
 

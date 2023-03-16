@@ -4,10 +4,16 @@
 #include <string_view>
 #include <json/json.hpp>
 
-#include <Forms/AuthForm.hpp>
-
 namespace DataGraph::Networking
 {
+struct ConnectionData
+{
+	std::string ip;
+	std::string port;
+	std::string login;
+	std::string password;
+};
+
 struct Response
 {
 	int returnCode = 0;
