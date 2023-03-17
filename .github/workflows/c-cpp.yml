@@ -14,4 +14,4 @@ jobs:
 
     steps:
     - name: "Test commands"
-      run: echo %cd%
+      run: cd
