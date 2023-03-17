@@ -1,0 +1,17 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "test" ]
+  pull_request:
+    branches: [ "test" ]
+
+jobs:
+  build:
+    runs-on: 
+    - windows-runner
+    - self-hosted
+
+    steps:
+    - name: "Test commands"
+      run: echo %cd%
