@@ -13,9 +13,7 @@ jobs:
 
     steps:
     - name: "Infrastructure init"
-      run: docker compose -f "C:\\dockerFamily\\docker-compose.yml" up -d 
-    - name: "Wait until initialized"
-      run: timeout 5 > NUL
+      run: echo "Done"
     - name: "Checkout code"
       uses: actions/checkout@v2
     - name: "Build Project"
@@ -28,4 +26,4 @@ jobs:
     - name: "Run Tests"
       run: ./bin/Test-windows-x86_64/Tool/Tool.exe
     - name: "Infrastructure down"
-      run: docker compose -f "C:\\dockerFamily\\docker-compose.yml" down
+      run: "& \"C:\\dockerFamily\\composeDown\\docker_compose.exe\""
