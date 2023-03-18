@@ -15,7 +15,7 @@ jobs:
     - name: "Infrastructure init"
       run: echo "Done"
     - name: "Wait until initialized"
-      run: timeout 5 > nil
+      run: timeout 5
     - name: "Checkout code"
       uses: actions/checkout@v2
     - name: "Build Project"
