@@ -283,6 +283,8 @@ TEST(ConnectSocketTest, ConnectionTimeout)
 	EXPECT_FALSE(connected) << "Connection should have timed out";
 }
 
+DWORD WINAPI serverThreadFunction(LPVOID lpParameter);
+
 struct ServerCommunication
 {
 	ServerCommunication()
@@ -325,57 +327,39 @@ struct ServerCommunication
 		m_threadRunning.store(true);
 		m_customResponse.store(nullptr);
 		SOCKET sock = m_listeningSocket;
-		m_serverThread = std::thread([sock, this]() {
-			while (m_threadRunning.load(std::memory_order_relaxed))
-			{
-				SOCKET clientSocket = accept(sock, NULL, NULL);
-				if (clientSocket != INVALID_SOCKET)
-				{
-					std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
-						if (*sck != INVALID_SOCKET)
-						{
-							closesocket(*sck);
-						}
-						return 0;
-					});
+		SOCKET* clsckt = m_clientSocket;
 
-					char buf[1024]{};
-					int len = recv(clientSocket, buf, 1024, 0);
-
-					if (!m_emptyResponse.load())
-					{
-						auto response = m_customResponse.load();
-						if (response == nullptr && len > 0)
-						{
-							send(clientSocket, buf, len, 0);
-						}
-						else
-						{
-							if (response != nullptr)
-							{
-								send(clientSocket, response, strlen(response), 0);
-							}
-						}
-					}
-				}
-			}
-		});
-	}
+		HANDLE hServerThread = CreateThread(NULL,  // default security attributes
+			 0,									   // use default stack size
+			 serverThreadFunction,				   // thread function name
+			 (LPVOID)this,						   // argument to thread function
+			 0,									   // use default creation flags
+			 NULL);								   // pointer to thread identifier
+	};
 
 	static SOCKET m_listeningSocket;
+	static SOCKET* m_clientSocket;
 	static std::string m_serverPort;
 	static std::string m_serverIp;
 	static std::thread m_serverThread;
 	static std::atomic<bool> m_emptyResponse;
 	static std::atomic<const char*> m_customResponse;
 	static std::atomic<bool> m_threadRunning;
+	static HANDLE hServerThread;
 	~ServerCommunication()
 	{
 		closesocket(m_listeningSocket);
+		m_threadRunning.store(false);
+		TerminateThread(hServerThread, 0);
+
+		// Close the thread handle
+		CloseHandle(hServerThread);
+
 		WSACleanup();
 	}
 };
 
+HANDLE ServerCommunication::hServerThread;
 std::string ServerCommunication::m_serverIp;
 std::string ServerCommunication::m_serverPort;
 std::thread ServerCommunication::m_serverThread;
@@ -383,8 +367,48 @@ std::atomic<bool> ServerCommunication::m_emptyResponse;
 std::atomic<const char*> ServerCommunication::m_customResponse;
 std::atomic<bool> ServerCommunication::m_threadRunning;
 SOCKET ServerCommunication::m_listeningSocket;
+SOCKET* ServerCommunication::m_clientSocket;
 
 static ServerCommunication s_server;
+
+DWORD WINAPI serverThreadFunction(LPVOID lpParameter)
+{
+	// Cast the parameter back to the original type
+	// In this example, assume it's a pointer to a class instance
+	while (true)
+	{
+		SOCKET clientSocket = accept(ServerCommunication::m_listeningSocket, NULL, NULL);
+		if (clientSocket != INVALID_SOCKET)
+		{
+			std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+				if (*sck != INVALID_SOCKET)
+				{
+					closesocket(*sck);
+				}
+				return 0;
+			});
+
+			char buf[1024]{};
+			int len = recv(clientSocket, buf, 1024, 0);
+
+			if (!ServerCommunication::m_emptyResponse.load())
+			{
+				auto response = ServerCommunication::m_customResponse.load();
+				if (response == nullptr && len > 0)
+				{
+					send(clientSocket, buf, len, 0);
+				}
+				else
+				{
+					if (response != nullptr)
+					{
+						send(clientSocket, response, strlen(response), 0);
+					}
+				}
+			}
+		}
+	}
+}
 
 TEST(SendAllTest, SendSuccessfully)
 {
