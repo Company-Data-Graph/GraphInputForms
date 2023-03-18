@@ -7,11 +7,16 @@
 #include <Windows.h>
 #include <json/json.hpp>
 
+#include <utils/StringParse.hpp>
 #include <Core/FormHandler.hpp>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <fmt/color.h>
+
+#include <random>
+
+#include <algorithm>
 
 namespace DataGraph::Networking
 {
@@ -28,41 +33,41 @@ std::string createHeadersString(const std::unordered_map<std::string, std::strin
 	return headersString;
 }
 
-enum class ErrorCodes
+using ErrorCodes = uint16_t;
+namespace ErrorCode
+{
+enum : uint16_t
 {
 	SUCCESS = 0,
-	INVALID_EXTENSION,
 	FILE_NOT_FOUND,
-	INVALID_FILE,
-	MAPPING_ERROR,
-	IO_ERROR,
 	INVALID_FILE_SIZES,
 	FILE_READ_ERROR
 };
+}
 
 ErrorCodes readFile(const std::string_view& filePath, std::vector<char>& fileContents)
 {
 	std::ifstream file(filePath.data(), std::ios::binary);
 	if (!file)
 	{
-		return ErrorCodes::FILE_NOT_FOUND;
+		return ErrorCode::FILE_NOT_FOUND;
 	}
 
 	file.seekg(0, std::ios::end);
 	std::streamsize size = file.tellg();
 	if (size < 0)
 	{
-		return ErrorCodes::INVALID_FILE_SIZES;
+		return ErrorCode::INVALID_FILE_SIZES;
 	}
 
 	file.seekg(0, std::ios::beg);
 	fileContents.resize(size);
 	if (!file.read(fileContents.data(), size))
 	{
-		return ErrorCodes::FILE_READ_ERROR;
+		return ErrorCode::FILE_READ_ERROR;
 	}
 
-	return ErrorCodes::SUCCESS;
+	return ErrorCode::SUCCESS;
 }
 
 json parseHeader(std::string_view headerView)
@@ -145,6 +150,7 @@ bool receiveResponse(SOCKET socket, Response& response)
 		return false;
 	}
 
+	response.raw = std::move(responseStr);
 	std::string_view headerView(&responseView[headerPos + 2], bodyPos - headerPos);
 	try
 	{
@@ -168,7 +174,7 @@ bool receiveResponse(SOCKET socket, Response& response)
 	return true;
 }
 
-int sendAll(SOCKET socket, const char* buffer, int length, int flags)
+int sendAll(SOCKET socket, const char* buffer, int length, int flags, int* sentBytes = nullptr)
 {
 	if (length <= 0 || socket == INVALID_SOCKET || buffer == nullptr)
 	{
@@ -183,9 +189,16 @@ int sendAll(SOCKET socket, const char* buffer, int length, int flags)
 		{
 			return SOCKET_ERROR;
 		}
+
 		totalSent += sent;
 	}
-	return totalSent;
+
+	if (sentBytes != nullptr)
+	{
+		*sentBytes = totalSent;
+	}
+
+	return socket;
 }
 
 bool send_request(SOCKET socket,
@@ -354,46 +367,107 @@ bool connectToMediaServer(ConnectionData& mediaServer, Response& response)
 	return success;
 }
 
+std::string_view getContentType(std::string_view filename)
+{
+	std::pair<std::string_view, std::string_view> contentTypes[]{
+		 {"*.html", "text/html"}, {"*.css", "text/css"}, {"*.js", "application/javascript"}, {"*.json", "application/json"}, {"*.png", "image/png"}, {"*.jpg", "image/jpeg"},
+		 {"*.jpeg", "image/jpeg"}, {"*.gif", "image/gif"}, {"*.svg", "image/svg+xml"}, {"*.txt", "text/plain"}
+	};
+
+	for (auto& pat: contentTypes)
+	{
+		if (utils::WildcardMatch(pat.first.data(), filename.data()))
+		{
+			return pat.second;
+		}
+	}
+
+	return "application/octet-stream";
+}
+
 int loadFileToHost(std::string_view filePath,
 	 ConnectionData& mediaServer,
-	 std::string_view proxyServerIp,
-	 std::string_view proxyServerPort,
 	 Response& response)
 {
+	if (!std::filesystem::path(filePath).has_filename())
+	{
+		return 5;
+	}
+
 	bool success = connectToMediaServer(mediaServer, response);
 	if (!success || response.returnCode != 200)
 	{
 		return 1;
 	}
 
-	SOCKET psocket = createSocket(proxyServerIp, proxyServerPort);
-	if (psocket == INVALID_SOCKET)
+	auto sock = createSocket(mediaServer.ip, mediaServer.port);
+	if (sock == INVALID_SOCKET)
 	{
-		FormHandler::logs()->error("Networking", "ProxyServer socket creation has failed.");
+		FormHandler::logs()->error("Networking", "Media server socket creation has failed.");
 		return 2;
 	}
 
-	if (!connectSocket(psocket, proxyServerIp, proxyServerPort, 5))
+	if (!connectSocket(sock, mediaServer.ip, mediaServer.port, 5))
 	{
-		FormHandler::logs()->error("Networking", "ProxyServer socket connection has failed.");
-
-		closesocket(psocket);
+		FormHandler::logs()->error("Networking", "Media server socket connection has failed.");
 		return 3;
 	}
+	std::unique_ptr<SOCKET, int(*)(SOCKET*)> msocket(&sock, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
 
-	success = send_request(psocket, fmt::format("http://{}:{}/loading", proxyServerIp, proxyServerPort), {},
-		 json({{"mediaServerDest", fmt::format("http://{}/media-server/upload", fmt::format("{}:{}", mediaServer.ip, mediaServer.port))},
-			  {"token", response.body["token"].get<std::string>()}, {"filePath", filePath}}),
-		 response);
-	if (!success)
+	static const std::string_view requestTemplate = "POST {0} HTTP/1.1\r\nHost: {1}{2}\r\nContent-Length: {5}\r\nContent-Type: multipart/form-data; boundary={4}\r\n{3}\r\n--{4}\r\nContent-Disposition: form-data; name=\"{6}\"; filename=\"{7}\"\r\nContent-Type: {8}\r\n\r\n";
+
+	std::vector<char> content;
+
+	std::string_view bodyKey = "file";
+	std::string fileName = std::filesystem::path(filePath).filename().string();
+	std::string_view fileContentType = getContentType(fileName);
+
+	if (auto result = readFile(filePath, content); result != ErrorCode::SUCCESS)
 	{
-		FormHandler::logs()->error("Networking", "File loading has failed.");
-
-		closesocket(psocket);
-		return 4;
+		return result;
 	}
 
-	closesocket(psocket);
+	static std::random_device rd;
+	static std::mt19937_64 gen(rd());
+	std::string boundary;
+
+	do
+	{
+		std::uniform_int_distribution<std::uint64_t> dist(0, -1);
+		boundary = fmt::format("--------------------------{:1>24}", fmt::format("{}", dist(gen)));
+	} while (std::search(content.begin(), content.end(), boundary.begin(), boundary.end()) != content.end());
+
+	{
+		std::string headerString = createHeadersString({{"Token", response.body["token"]}});
+		uint64_t contentLength = fileContentType.size() + fileName.size() + content.size() + (headerString.size() - 2) + boundary.size();
+		std::string requestString = fmt::format(requestTemplate, "/media-server/upload", mediaServer.ip, ":" + mediaServer.port, headerString,
+			 boundary, contentLength, bodyKey, fileName, fileContentType);
+
+		uint32_t requestEnd = requestString.size();
+		uint32_t endSize = (requestString.size() + boundary.size() + 4 + content.size() + 2);
+		requestString.reserve(endSize);
+		requestString.resize(requestString.size() + content.size());
+		memcpy(requestString.data() + requestEnd, content.data(), content.size());
+		requestString += "\r\n--" + boundary + "--\r\n";
+
+		int result = sendAll(sock, requestString.data(), requestString.size(), 0);
+		if (result == SOCKET_ERROR)
+		{
+			FormHandler::logs()->error("Networking", "Error sending request: {}", WSAGetLastError());
+			return false;
+		}
+
+		if (!receiveResponse(sock, response))
+		{
+			return false;
+		}
+	}
 
 	return 0;
 }

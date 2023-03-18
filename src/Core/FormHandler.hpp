@@ -1,6 +1,5 @@
 #ifndef DATAGRAPHTOOL_CORE_FORMHANDLER_H__
 #define DATAGRAPHTOOL_CORE_FORMHANDLER_H__
-
 #include <string_view>
 
 #include "Logger.hpp"
@@ -8,7 +7,6 @@
 
 #include <Forms/AuthForm.hpp>
 
-#include <Windows.h>
 #include <pgfe/pgfe.hpp>
 
 class GLFWwindow;
@@ -59,8 +57,6 @@ private:
 	static std::unique_ptr<UI> ui;
 	static std::unique_ptr<dmitigr::pgfe::Connection> dbConnection;
 	static std::unique_ptr<Networking::ConnectionData> medServConn;
-
-	PROCESS_INFORMATION m_proxy;
 
 	friend class UI;
 };

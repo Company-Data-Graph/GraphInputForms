@@ -10,6 +10,8 @@
 #include "Logger.hpp"
 #include "UI.hpp"
 
+#include <stb_image.h>
+
 #include <filesystem>
 #ifdef __has_include(<windows.h)
 #include <windows.h>
@@ -81,16 +83,6 @@ int FormHandler::init(bool resizeAble)
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 
-	// Set up the PROCESS_INFORMATION structure
-	ZeroMemory(&m_proxy, sizeof(m_proxy));
-
-	// Create the process
-	if (!CreateProcess(L"proxy\\data-loader.exe", NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &m_proxy))
-	{
-		FormHandler::logs()->error("Core", "Failed to create process: {}", GetLastError());
-		return 1;
-	}
-
 	FormHandler::loggers = std::make_unique<Logger>();
 	auto result = loggers->init();
 	assert(result == 0);
@@ -106,7 +98,6 @@ int FormHandler::init(bool resizeAble)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, resizeAble);
-
 	window.window = glfwCreateWindow(data.width, data.height, data.title.c_str(), NULL, NULL);
 	if (!window.window)
 	{
@@ -136,6 +127,12 @@ int FormHandler::init(bool resizeAble)
 		windowData->closed = true;
 	});
 
+	GLFWimage icon{};
+	icon.pixels = stbi_load("resources/icons/AppIcon.png", &icon.width, &icon.height, nullptr, STBI_rgb_alpha);
+	assert(icon.pixels != nullptr);
+
+	glfwSetWindowIcon(window.window, 1, &icon);
+	stbi_image_free(icon.pixels);
 
 	glfwMakeContextCurrent(window.window);
 
@@ -171,16 +168,6 @@ FormHandler::~FormHandler()
 	}
 
 	WSACleanup();
-
-	// Terminate the process
-	TerminateProcess(m_proxy.hProcess, 0);
-
-	// Wait for the process to finish
-	WaitForSingleObject(m_proxy.hProcess, INFINITE);
-
-	// Close the handles
-	CloseHandle(m_proxy.hProcess);
-	CloseHandle(m_proxy.hThread);
 }
 
 FormHandler::Window& FormHandler::getWindow() { return window; }

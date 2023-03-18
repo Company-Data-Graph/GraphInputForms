@@ -191,7 +191,7 @@ int CompanyUpdate::draw()
 		if (m_errorCode == 7)
 		{
 			Networking::Response response;
-			auto result = Networking::loadFileToHost(loadedFile, *FormHandler::getMedServConn(), "127.0.0.1", "5555", response);
+			auto result = Networking::loadFileToHost(loadedFile, *FormHandler::getMedServConn(), response);
 			if (result != 0 || response.returnCode == 0)
 			{
 				m_errorCode = 1;

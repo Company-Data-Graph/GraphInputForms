@@ -332,6 +332,8 @@ void UI::endFrame()
 }
 UI::~UI()
 {
+	ImGui_ImplGlfw_Shutdown();
+	ImGui_ImplOpenGL3_Shutdown();
 	for (auto form : forms)
 	{
 		delete form;
