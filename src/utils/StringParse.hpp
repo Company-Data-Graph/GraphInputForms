@@ -11,5 +11,7 @@ namespace DataGraph::utils
 std::string parseDepartments(const std::unordered_map<std::string, uint32_t>& chosenDepartments);
 std::string parseDate(const std::optional<struct tm>& date);
 std::string parseLastNode(const std::map<int, std::string>& prevProjVersions);
+// A public domain algorithm published by the C / C++ Users Journal
+bool WildcardMatch(const char* pat, const char* str);
 }  // namespace DataGraph::utils
 #endif	// !DATAGRAPHTOOL_FORMS_UIMODULES_H__

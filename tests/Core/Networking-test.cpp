@@ -12,13 +12,18 @@
 #include <future>
 #include <Core/Networking.hpp>
 
+#include <stb_image.h>
+#include <utils/Encrypt.hpp>
+
+#include <pgfe/pgfe.hpp>
+
 namespace DataGraph::Networking
 {
 std::string createHeadersString(const std::unordered_map<std::string, std::string>& headers);
 nlohmann::json parseHeader(std::string_view headerView);
 SOCKET createSocket(const std::string_view& address, const std::string_view& port);
 bool connectSocket(SOCKET socket, const std::string_view& address, const std::string_view& port, int timeout);
-int sendAll(SOCKET socket, const char* buffer, int length, int flags);
+int sendAll(SOCKET socket, const char* buffer, int length, int flags, int* sentBytes = nullptr);
 bool receiveResponse(SOCKET socket, Response& response);
 bool send_request(SOCKET socket,
 	 const std::string& url,
@@ -27,17 +32,17 @@ bool send_request(SOCKET socket,
 	 Response& response,
 	 bool isPost);
 
-enum class ErrorCodes
+using ErrorCodes = uint16_t;
+namespace ErrorCode
+{
+enum : uint16_t
 {
 	SUCCESS = 0,
-	INVALID_EXTENSION,
 	FILE_NOT_FOUND,
-	INVALID_FILE,
-	MAPPING_ERROR,
-	IO_ERROR,
 	INVALID_FILE_SIZES,
 	FILE_READ_ERROR
 };
+}
 ErrorCodes readFile(const std::string_view& filePath, std::vector<char>& fileContents);
 }  // namespace DataGraph::Networking
 
@@ -138,7 +143,7 @@ std::filesystem::path ReadFileTest::m_testDir;
 TEST(ReadFileTest, NonexistentFile)
 {
 	std::vector<char> fileContents;
-	EXPECT_EQ(Networking::ErrorCodes::FILE_NOT_FOUND, Networking::readFile(ReadFileTest::getPath("nonexistent_file.txt"), fileContents));
+	EXPECT_EQ(Networking::ErrorCode::FILE_NOT_FOUND, Networking::readFile(ReadFileTest::getPath("nonexistent_file.txt"), fileContents));
 }
 
 TEST(ReadFileTest, EmptyFile)
@@ -148,7 +153,7 @@ TEST(ReadFileTest, EmptyFile)
 	file.close();
 
 	std::vector<char> fileContents;
-	EXPECT_EQ(Networking::ErrorCodes::SUCCESS, Networking::readFile(filePath, fileContents));
+	EXPECT_EQ(Networking::ErrorCode::SUCCESS, Networking::readFile(filePath, fileContents));
 	EXPECT_EQ(0, fileContents.size());
 }
 
@@ -162,7 +167,7 @@ TEST(ReadFileTest, SmallFile)
 	file.close();
 
 	std::vector<char> fileContents;
-	EXPECT_EQ(Networking::ErrorCodes::SUCCESS, Networking::readFile(filePath, fileContents));
+	EXPECT_EQ(Networking::ErrorCode::SUCCESS, Networking::readFile(filePath, fileContents));
 	EXPECT_EQ(fileData.size(), fileContents.size());
 }
 
@@ -180,7 +185,7 @@ TEST(ReadFileTest, LargeFile)
 	file.close();
 
 	std::vector<char> fileContents;
-	EXPECT_EQ(Networking::ErrorCodes::SUCCESS, Networking::readFile(filePath, fileContents));
+	EXPECT_EQ(Networking::ErrorCode::SUCCESS, Networking::readFile(filePath, fileContents));
 	EXPECT_EQ(size, fileContents.size());
 }
 
@@ -248,10 +253,15 @@ TEST(ConnectSocketTest, FailsToConnectSocket)
 	SOCKET testSocket = INVALID_SOCKET;
 
 	bool result = Networking::connectSocket(testSocket, address, port, 5);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> lSocket(&testSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
 
 	EXPECT_FALSE(result);
-
-	closesocket(testSocket);
 }
 
 TEST(ConnectSocketTest, ConnectionTimeout)
@@ -261,11 +271,16 @@ TEST(ConnectSocketTest, ConnectionTimeout)
 
 	SOCKET clientSocket = Networking::createSocket(serverIp, serverPort);
 	ASSERT_NE(clientSocket, INVALID_SOCKET) << "Failed to create client socket";
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> lSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
 
 	bool connected = Networking::connectSocket(clientSocket, serverIp, serverPort, 5);
 	EXPECT_FALSE(connected) << "Connection should have timed out";
-
-	closesocket(clientSocket);
 }
 
 struct ServerCommunication
@@ -282,8 +297,8 @@ struct ServerCommunication
 		m_serverIp = "127.0.0.1";
 		m_serverPort = "44852";
 
-		SOCKET listenSocket = Networking::createSocket(m_serverIp, m_serverPort);
-		if (listenSocket == INVALID_SOCKET)
+		m_listeningSocket = Networking::createSocket(m_serverIp, m_serverPort);
+		if (m_listeningSocket == INVALID_SOCKET)
 		{
 			throw std::runtime_error("Error creating socket");
 		}
@@ -292,28 +307,38 @@ struct ServerCommunication
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(stoi(m_serverPort));
 		addr.sin_addr.s_addr = INADDR_ANY;
-		result = bind(listenSocket, (sockaddr*)&addr, sizeof(addr));
+		result = bind(m_listeningSocket, (sockaddr*)&addr, sizeof(addr));
 		if (result == SOCKET_ERROR)
 		{
-			closesocket(listenSocket);
+			closesocket(m_listeningSocket);
 			throw std::runtime_error("Error binding socket");
 		}
 
-		result = listen(listenSocket, SOMAXCONN);
+		result = listen(m_listeningSocket, SOMAXCONN);
 		if (result == SOCKET_ERROR)
 		{
-			closesocket(listenSocket);
+			closesocket(m_listeningSocket);
 			throw std::runtime_error("Error listening on socket");
 		}
 
 		m_emptyResponse.store(false);
+		m_threadRunning.store(true);
 		m_customResponse.store(nullptr);
-		m_serverThread = std::thread([listenSocket, this]() {
-			while (true)
+		SOCKET sock = m_listeningSocket;
+		m_serverThread = std::thread([sock, this]() {
+			while (m_threadRunning.load(std::memory_order_relaxed))
 			{
-				SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+				SOCKET clientSocket = accept(sock, NULL, NULL);
 				if (clientSocket != INVALID_SOCKET)
 				{
+					std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+						if (*sck != INVALID_SOCKET)
+						{
+							closesocket(*sck);
+						}
+						return 0;
+					});
+
 					char buf[1024]{};
 					int len = recv(clientSocket, buf, 1024, 0);
 
@@ -326,22 +351,29 @@ struct ServerCommunication
 						}
 						else
 						{
-							send(clientSocket, response, strlen(response), 0);
+							if (response != nullptr)
+							{
+								send(clientSocket, response, strlen(response), 0);
+							}
 						}
 					}
-					closesocket(clientSocket);
 				}
 			}
 		});
 	}
 
+	static SOCKET m_listeningSocket;
 	static std::string m_serverPort;
 	static std::string m_serverIp;
 	static std::thread m_serverThread;
 	static std::atomic<bool> m_emptyResponse;
 	static std::atomic<const char*> m_customResponse;
-
-	~ServerCommunication() { WSACleanup(); }
+	static std::atomic<bool> m_threadRunning;
+	~ServerCommunication()
+	{
+		closesocket(m_listeningSocket);
+		WSACleanup();
+	}
 };
 
 std::string ServerCommunication::m_serverIp;
@@ -349,6 +381,8 @@ std::string ServerCommunication::m_serverPort;
 std::thread ServerCommunication::m_serverThread;
 std::atomic<bool> ServerCommunication::m_emptyResponse;
 std::atomic<const char*> ServerCommunication::m_customResponse;
+std::atomic<bool> ServerCommunication::m_threadRunning;
+SOCKET ServerCommunication::m_listeningSocket;
 
 static ServerCommunication s_server;
 
@@ -358,15 +392,22 @@ TEST(SendAllTest, SendSuccessfully)
 	auto serverPort = ServerCommunication::m_serverPort;
 	SOCKET clientSocket = Networking::createSocket(serverIp, serverPort);
 	ASSERT_NE(clientSocket, INVALID_SOCKET);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	bool isConnected = Networking::connectSocket(clientSocket, serverIp, serverPort, 5000);
 	ASSERT_TRUE(isConnected);
 
 	const char* data = "Hello, world!";
-	int result = Networking::sendAll(clientSocket, data, strlen(data), 0);
-
-	ASSERT_EQ(result, strlen(data));
-
-	closesocket(clientSocket);
+	int readLength = 0;
+	SOCKET result = Networking::sendAll(clientSocket, data, strlen(data), 0, &readLength);
+	ASSERT_NE(result, INVALID_SOCKET);
+	ASSERT_EQ(readLength, strlen(data));
 }
 
 TEST(SendAllTest, SendAllInvalidSocket)
@@ -386,6 +427,14 @@ TEST(SendAllTest, SendAllInvalidBuffer)
 	auto serverIp = ServerCommunication::m_serverIp;
 	auto serverPort = ServerCommunication::m_serverPort;
 	SOCKET sock = Networking::createSocket(serverIp, serverPort);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&sock, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	const char* buffer = nullptr;
 	int length = 5;
 	int flags = 0;
@@ -393,8 +442,6 @@ TEST(SendAllTest, SendAllInvalidBuffer)
 	int result = Networking::sendAll(sock, buffer, length, flags);
 
 	EXPECT_EQ(SOCKET_ERROR, result);
-
-	closesocket(sock);
 }
 
 TEST(SendAllTest, SendAllInvalidLength)
@@ -402,6 +449,14 @@ TEST(SendAllTest, SendAllInvalidLength)
 	auto serverIp = ServerCommunication::m_serverIp;
 	auto serverPort = ServerCommunication::m_serverPort;
 	SOCKET sock = Networking::createSocket(serverIp, serverPort);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&sock, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	const char* buffer = "test";
 	int length = -1;
 	int flags = 0;
@@ -409,8 +464,6 @@ TEST(SendAllTest, SendAllInvalidLength)
 	int result = Networking::sendAll(sock, buffer, length, flags);
 
 	EXPECT_EQ(SOCKET_ERROR, result);
-
-	closesocket(sock);
 }
 
 TEST(SendAllTest, SendAllInvalidFlags)
@@ -418,6 +471,14 @@ TEST(SendAllTest, SendAllInvalidFlags)
 	auto serverIp = ServerCommunication::m_serverIp;
 	auto serverPort = ServerCommunication::m_serverPort;
 	SOCKET sock = Networking::createSocket(serverIp, serverPort);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&sock, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	const char* buffer = "test";
 	int length = strlen(buffer);
 	int flags = -1;
@@ -425,19 +486,27 @@ TEST(SendAllTest, SendAllInvalidFlags)
 	int result = Networking::sendAll(sock, buffer, length, flags);
 
 	EXPECT_EQ(SOCKET_ERROR, result);
-
-	closesocket(sock);
 }
 
 TEST(ReceiveResponseTest, ReceiveResponseSuccessfully)
 {
 	SOCKET clientSocket = Networking::createSocket(ServerCommunication::m_serverIp, ServerCommunication::m_serverPort);
 	ASSERT_NE(clientSocket, INVALID_SOCKET);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	ASSERT_TRUE(Networking::connectSocket(clientSocket, ServerCommunication::m_serverIp, ServerCommunication::m_serverPort, 1000));
 
 	const char* requestData = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
 	int requestLength = strlen(requestData);
-	int sentBytes = Networking::sendAll(clientSocket, requestData, requestLength, 0);
+	int sentBytes = 0;
+	auto result = Networking::sendAll(clientSocket, requestData, requestLength, 0, &sentBytes);
+	ASSERT_NE(result, INVALID_SOCKET);
 	ASSERT_EQ(sentBytes, requestLength);
 
 	Networking::Response response;
@@ -446,36 +515,52 @@ TEST(ReceiveResponseTest, ReceiveResponseSuccessfully)
 	ASSERT_EQ(response.returnCode, 200);
 	ASSERT_EQ(response.header["Content-Length"], "0");
 	ASSERT_TRUE(response.body.empty());
-
-	closesocket(clientSocket);
 }
 
 TEST(ReceiveResponseTest, ReceiveResponseInvalidSocket)
 {
 	SOCKET clientSocket = Networking::createSocket(ServerCommunication::m_serverIp, ServerCommunication::m_serverPort);
 	ASSERT_NE(clientSocket, INVALID_SOCKET);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	ASSERT_TRUE(Networking::connectSocket(clientSocket, ServerCommunication::m_serverIp, ServerCommunication::m_serverPort, 1000));
 
 	const char* requestData = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
 	int requestLength = strlen(requestData);
-	int sentBytes = Networking::sendAll(clientSocket, requestData, requestLength, 0);
+	int sentBytes = 0;
+	auto result = Networking::sendAll(clientSocket, requestData, requestLength, 0, &sentBytes);
+	ASSERT_NE(result, INVALID_SOCKET);
 	ASSERT_EQ(sentBytes, requestLength);
 
 	Networking::Response response;
 	EXPECT_FALSE(Networking::receiveResponse(INVALID_SOCKET, response));
-
-	closesocket(clientSocket);
 }
 
 TEST(ReceiveResponseTest, ReceiveResponseIncorrectResponse)
 {
 	SOCKET clientSocket = Networking::createSocket(ServerCommunication::m_serverIp, ServerCommunication::m_serverPort);
 	ASSERT_NE(clientSocket, INVALID_SOCKET);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	ASSERT_TRUE(Networking::connectSocket(clientSocket, ServerCommunication::m_serverIp, ServerCommunication::m_serverPort, 1000));
 
 	const char* requestData = "HTTP/1.1 200 OK\r\nBodyAndHeader";
 	int requestLength = strlen(requestData);
-	int sentBytes = Networking::sendAll(clientSocket, requestData, requestLength, 0);
+	int sentBytes = 0;
+	auto result = Networking::sendAll(clientSocket, requestData, requestLength, 0, &sentBytes);
+	ASSERT_NE(result, INVALID_SOCKET);
 	ASSERT_EQ(sentBytes, requestLength);
 
 	Networking::Response response;
@@ -484,20 +569,28 @@ TEST(ReceiveResponseTest, ReceiveResponseIncorrectResponse)
 	ASSERT_EQ(response.returnCode, 200);
 	ASSERT_TRUE(response.header.empty());
 	ASSERT_TRUE(response.body.empty());
-
-	closesocket(clientSocket);
 }
 
 TEST(ReceiveResponseTest, ReceiveResponseEmptyResponse)
 {
 	SOCKET clientSocket = Networking::createSocket(ServerCommunication::m_serverIp, ServerCommunication::m_serverPort);
 	ASSERT_NE(clientSocket, INVALID_SOCKET);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	ASSERT_TRUE(Networking::connectSocket(clientSocket, ServerCommunication::m_serverIp, ServerCommunication::m_serverPort, 1000));
 
 	ServerCommunication::m_emptyResponse.store(true);
 	const char* requestData = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
 	int requestLength = strlen(requestData);
-	int sentBytes = Networking::sendAll(clientSocket, requestData, requestLength, 0);
+	int sentBytes = 0;
+	auto result = Networking::sendAll(clientSocket, requestData, requestLength, 0, &sentBytes);
+	ASSERT_NE(result, INVALID_SOCKET);
 	ASSERT_EQ(sentBytes, requestLength);
 
 	Networking::Response response;
@@ -508,8 +601,6 @@ TEST(ReceiveResponseTest, ReceiveResponseEmptyResponse)
 	ASSERT_TRUE(response.body.empty());
 
 	ServerCommunication::m_emptyResponse.store(false);
-
-	closesocket(clientSocket);
 }
 
 TEST(SendRequestTest, SendRequestSuccessfully)
@@ -563,6 +654,14 @@ TEST(SendRequestTest, SendRequestSuccessffullyResponse)
 		FAIL() << "Error creating socket";
 	}
 
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> lSocket(&listenSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(stoi(port));
@@ -570,14 +669,12 @@ TEST(SendRequestTest, SendRequestSuccessffullyResponse)
 	result = bind(listenSocket, (sockaddr*)&addr, sizeof(addr));
 	if (result == SOCKET_ERROR)
 	{
-		closesocket(listenSocket);
 		FAIL() << "Error binding socket";
 	}
 
 	result = listen(listenSocket, SOMAXCONN);
 	if (result == SOCKET_ERROR)
 	{
-		closesocket(listenSocket);
 		FAIL() << "Error listening on socket";
 	}
 
@@ -594,6 +691,14 @@ TEST(SendRequestTest, SendRequestSuccessffullyResponse)
 
 	SOCKET clientSocket = Networking::createSocket(ip, port);
 	ASSERT_NE(clientSocket, INVALID_SOCKET);
+	std::unique_ptr<SOCKET, int (*)(SOCKET*)> cSocket(&clientSocket, [](SOCKET* sck) {
+		if (*sck != INVALID_SOCKET)
+		{
+			closesocket(*sck);
+		}
+		return 0;
+	});
+
 	ASSERT_TRUE(Networking::connectSocket(clientSocket, ip, port, 1000));
 
 	std::string url = "http://" + ip + ":" + port;
@@ -617,7 +722,6 @@ TEST(SendRequestTest, SendRequestSuccessffullyResponse)
 	EXPECT_NE(responseMessage.find("\"foo\":123"), std::string::npos);
 	EXPECT_NE(responseMessage.find("\"bar\":\"hello\""), std::string::npos);
 
-	closesocket(clientSocket);
 	WSACleanup();
 }
 
@@ -641,4 +745,114 @@ TEST(SendRequestTest, SendRequestInvalidSocket)
 	Networking::Response response;
 	bool result = Networking::send_request(INVALID_SOCKET, url, headers, body, response, true);
 	EXPECT_FALSE(result);
+}
+
+TEST(formMediaServerApiTests, TestInvalidCredentials)
+{
+	std::string imageName = "AppIcon.png";
+	std::string testFile = fmt::format("resources/icons/{}", imageName);
+	DataGraph::Networking::ConnectionData auth;
+	std::string extension = imageName.substr(imageName.find_first_of('.'));
+	auth.ip = "127.0.0.1";
+	auth.port = "8082";
+	auth.login = "admin";
+	auth.password = "invalid";
+	DataGraph::Networking::Response response;
+	DataGraph::Networking::connectToMediaServer(auth, response);
+	EXPECT_EQ(response.returnCode, 401);
+}
+
+TEST(formMediaServerApiTests, TestSuccessfulAuthentification)
+{
+	std::string imageName = "AppIcon.png";
+	std::string testFile = fmt::format("resources/icons/{}", imageName);
+	DataGraph::Networking::ConnectionData auth;
+	std::string extension = imageName.substr(imageName.find_first_of('.'));
+	auth.ip = "127.0.0.1";
+	auth.port = "8082";
+	auth.login = "admin";
+	auth.password = "example";
+	DataGraph::Networking::Response response;
+	DataGraph::Networking::connectToMediaServer(auth, response);
+	EXPECT_EQ(response.returnCode, 200);
+}
+
+TEST(formMediaServerApiTests, TestUploadMediaServer)
+{
+	std::string imageName = "AppIcon.png";
+	std::string testFile = fmt::format("resources/icons/{}", imageName);
+	DataGraph::Networking::ConnectionData auth;
+	std::string extension = imageName.substr(imageName.find_first_of('.'));
+	auth.ip = "127.0.0.1";
+	auth.port = "8082";
+	auth.login = "admin";
+	auth.password = "example";
+	DataGraph::Networking::Response response;
+	DataGraph::Networking::loadFileToHost(testFile, auth, response);
+
+	ASSERT_TRUE(response.body.contains("fileName"));
+	auto fileName = response.body["fileName"].get<std::string_view>();
+	EXPECT_EQ(fileName, utils::GetMD5String(imageName) + extension);
+}
+
+TEST(formMediaServerApiTests, TestUploadExistsMediaServer)
+{
+	std::string imageName = "AppIcon.png";
+	std::string testFile = fmt::format("resources/icons/{}", imageName);
+	DataGraph::Networking::ConnectionData auth;
+	std::string extension = imageName.substr(imageName.find_first_of('.'));
+	auth.ip = "127.0.0.1";
+	auth.port = "8082";
+	auth.login = "admin";
+	auth.password = "example";
+	DataGraph::Networking::Response response;
+	DataGraph::Networking::loadFileToHost(testFile, auth, response);
+	EXPECT_TRUE(response.returnCode, 400);
+	EXPECT_TRUE(response.body.contains("error"));
+
+	ASSERT_TRUE(response.body.contains("fileName"));
+	auto fileName = response.body["fileName"].get<std::string_view>();
+	EXPECT_EQ(fileName, utils::GetMD5String(imageName) + extension);
+}
+
+TEST(formDatabaseConnection, SuccessfulConnection)
+{
+	std::string ip = "127.0.0.1";
+	std::string port = "5432";
+	std::string login = "postgres";
+	std::string password = "example";
+
+	dmitigr::pgfe::Connection_options options;
+	options.set(dmitigr::pgfe::Communication_mode::net)
+		 .set_hostname(ip)
+		 .set_port(std::stoi(port))
+		 .set_database("DataGraph")
+		 .set_username(login)
+		 .set_password(password);
+
+	dmitigr::pgfe::Connection conn(options);
+	EXPECT_NO_THROW(conn.connect());
+	EXPECT_TRUE(conn.is_connected());
+	conn.disconnect();
+}
+
+TEST(formDatabaseConnection, InvalidConnection)
+{
+	std::string ip = "127.0.0.1";
+	std::string port = "5432";
+	std::string login = "postgres";
+	std::string password = "invalid";
+
+	dmitigr::pgfe::Connection_options options;
+	options.set(dmitigr::pgfe::Communication_mode::net)
+		 .set_hostname(ip)
+		 .set_port(std::stoi(port))
+		 .set_database("DataGraph")
+		 .set_username(login)
+		 .set_password(password);
+
+	dmitigr::pgfe::Connection conn(options);
+
+	EXPECT_ANY_THROW(conn.connect());
+	EXPECT_FALSE(conn.is_connected());
 }

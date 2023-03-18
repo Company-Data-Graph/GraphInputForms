@@ -5,6 +5,7 @@
 
 namespace DataGraph::utils
 {
+#ifndef FORMHANDLER_TESTS
 bool openFile(std::string& filePath)
 {
 	HRESULT f_SysHr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -109,5 +110,13 @@ bool openFile(std::string& filePath)
 
 	return TRUE;
 }
+#else
+std::string s_openFileResult;
 
+bool openFile(std::string& filePath)
+{
+	filePath = s_openFileResult;
+	return true;
+}
+#endif	// TEST
 }  // namespace DataGraph::utils
