@@ -8,10 +8,18 @@ on:
 
 jobs:
   build:
-    runs-on: 
-    - windows-runner
+    runs-on:
     - self-hosted
 
     steps:
-    - name: "Test commands"
-      run: cd
+    - name: "Checkout code"
+      uses: actions/checkout@v2
+    - name: "Build Project"
+      run: |
+        cd scripts
+        cmd /C Win-GenProjects19.bat
+        cd ../
+    - name: "Compile Project"
+      run: "& \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"./DataGraphDataLoadTool.sln\" /p:Configuration=Test /p:Platform=x64"
+    - name: "Run Tests"
+      run: ./bin/Test-windows-x86_64/Tool/Tool.exe
