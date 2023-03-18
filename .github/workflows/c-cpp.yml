@@ -2,16 +2,30 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "test" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "test" ]
+    branches: [ "main" ]
 
 jobs:
   build:
-    runs-on: 
-    - windows-runner
+    runs-on:
     - self-hosted
 
     steps:
-    - name: "Test commands"
-      run: cd
+    - name: "Infrastructure init"
+      run: docker compose -f "C:\\dockerFamily\\docker-compose.yml" up -d 
+    - name: "Wait until initialized"
+      run: timeout 5 > NUL
+    - name: "Checkout code"
+      uses: actions/checkout@v2
+    - name: "Build Project"
+      run: |
+        cd scripts
+        cmd /C Win-GenProjects19.bat
+        cd ../
+    - name: "Compile Project"
+      run: "& \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe\" \"./DataGraphDataLoadTool.sln\" /p:Configuration=Test /p:Platform=x64"
+    - name: "Run Tests"
+      run: ./bin/Test-windows-x86_64/Tool/Tool.exe
+    - name: "Infrastructure down"
+      run: docker compose -f "C:\\dockerFamily\\docker-compose.yml" down
