@@ -818,7 +818,7 @@ TEST(formMediaServerApiTests, TestUploadExistsMediaServer)
 TEST(formDatabaseConnection, SuccessfulConnection)
 {
 	std::string ip = "127.0.0.1";
-	std::string port = "5432";
+	std::string port = "5435";
 	std::string login = "postgres";
 	std::string password = "example";
 
@@ -826,7 +826,7 @@ TEST(formDatabaseConnection, SuccessfulConnection)
 	options.set(dmitigr::pgfe::Communication_mode::net)
 		 .set_hostname(ip)
 		 .set_port(std::stoi(port))
-		 .set_database("DataGraph")
+		 .set_database("datagraph")
 		 .set_username(login)
 		 .set_password(password);
 
@@ -839,7 +839,7 @@ TEST(formDatabaseConnection, SuccessfulConnection)
 TEST(formDatabaseConnection, InvalidConnection)
 {
 	std::string ip = "127.0.0.1";
-	std::string port = "5432";
+	std::string port = "5435";
 	std::string login = "postgres";
 	std::string password = "invalid";
 
@@ -847,7 +847,7 @@ TEST(formDatabaseConnection, InvalidConnection)
 	options.set(dmitigr::pgfe::Communication_mode::net)
 		 .set_hostname(ip)
 		 .set_port(std::stoi(port))
-		 .set_database("DataGraph")
+		 .set_database("datagraph")
 		 .set_username(login)
 		 .set_password(password);
 
