@@ -3,8 +3,8 @@
 
 #include <string>
 
-namespace utils
+namespace DataGraph::utils
 {
 std::string GetMD5String(std::string msg);
-}  // namespace utils
-#endif	// CONSTEXPR_HASH_MD5_H
+}  // namespace DataGraph::utils
+#endif

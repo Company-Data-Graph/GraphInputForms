@@ -3,15 +3,12 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
-#include <core/Networking.hpp>
+#include <Networking/Networking.hpp>
 #include <Core/FormHandler.hpp>
 
 namespace DataGraph::Forms
 {
-int AuthForm::init()
-{
-	return 0;
-}
+int AuthForm::init() { return 0; }
 
 int AuthForm::draw()
 {

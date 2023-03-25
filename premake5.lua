@@ -114,7 +114,8 @@ project "Tool"
 	filter "configurations:Test"
 		defines "FORMHANDLER_TESTS"
 		postbuildcommands (wrkDir .. "/scripts/premake/bin/premake5.exe postBuild --configuration=Test")
-		files "tests/**.cpp"
+		files "tests/**.*"
+		includedirs "tests"
 		defines "SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF"
 
 	filter "configurations:Debug"

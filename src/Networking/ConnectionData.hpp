@@ -1,7 +1,7 @@
-#ifndef DATAGRAPHTOOL_CORE_NETWORKING_H__
-#define DATAGRAPHTOOL_CORE_NETWORKING_H__
+#ifndef DATAGRAPHTOOL_CORE_NETWORKING_DATA_H__
+#define DATAGRAPHTOOL_CORE_NETWORKING_DATA_H__
 
-#include <string_view>
+#include <string>
 #include <json/json.hpp>
 
 namespace DataGraph::Networking
@@ -21,11 +21,5 @@ struct Response
 	nlohmann::json body;
 	std::string raw;
 };
-
-bool connectToMediaServer(ConnectionData& mediaServer, Response& response);
-
-int loadFileToHost(std::string_view filePath,
-	 ConnectionData& mediaServer,
-	 Response& response);
 }  // namespace DataGraph::Networking
 #endif

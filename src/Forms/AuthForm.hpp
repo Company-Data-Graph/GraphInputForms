@@ -5,7 +5,7 @@
 #include <string_view>
 #include <memory>
 
-#include <core/Networking.hpp>
+#include <Networking/ConnectionData.hpp>
 
 namespace DataGraph::Forms
 {

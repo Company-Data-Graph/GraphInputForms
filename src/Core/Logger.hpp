@@ -26,7 +26,7 @@ public:
 
 #if defined(_DEBUG) && !defined(FORMHANDLER_TESTS)
 	template <typename... Args>
-	void log(const std::string_view& loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
+	void log(const std::string_view loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
 	{
 		auto loger = loggers.find(loggerName);
 		if (loger->second.enabled)
@@ -36,7 +36,7 @@ public:
 	}
 
 	template <typename T>
-	void log(const std::string_view& loggerName, const T& msg)
+	void log(const std::string_view loggerName, const T& msg)
 	{
 		auto loger = loggers.find(loggerName);
 		if (loger->second.enabled)
@@ -46,7 +46,7 @@ public:
 	}
 
 	template <typename... Args>
-	void error(const std::string_view& loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
+	void error(const std::string_view loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
 	{
 		auto loger = loggers.find(loggerName);
 		if (loger->second.enabled)
@@ -56,7 +56,7 @@ public:
 	}
 
 	template <typename T>
-	void error(const std::string_view& loggerName, const T& msg)
+	void error(const std::string_view loggerName, const T& msg)
 	{
 		auto loger = loggers.find(loggerName);
 		if (loger->second.enabled)
@@ -67,28 +67,28 @@ public:
 
 #else
 	template <typename... Args>
-	void log(const std::string_view& loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
+	void log(const std::string_view loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
 	{}
 
 	template <typename Args>
-	void log(const std::string_view& loggerName, const Args& msg)
+	void log(const std::string_view loggerName, const Args& msg)
 	{}
 
 	template <typename... Args>
-	void error(const std::string_view& loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
+	void error(const std::string_view loggerName, spdlog::format_string_t<Args...> fmt, Args&&... args)
 	{}
 
 	template <typename Args>
-	void error(const std::string_view& loggerName, const Args& msg)
+	void error(const std::string_view loggerName, const Args& msg)
 	{}
 #endif	// _DEBUG
 
-	int createLogger(const std::string_view& name, bool enabled = true);
+	int createLogger(const std::string_view name, bool enabled = true);
 
-	void enableLogger(const std::string_view& name);
-	void disableLogger(const std::string_view& name);
+	void enableLogger(const std::string_view name);
+	void disableLogger(const std::string_view name);
 
-	void flush(const std::string_view& name);
+	void flush(const std::string_view name);
 	void flushAll();
 
 	~Logger();

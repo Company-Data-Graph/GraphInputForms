@@ -1,6 +1,6 @@
 #include "Encrypt.hpp"
 
-namespace utils
+namespace DataGraph::utils
 {
 typedef union uwb
 {
@@ -138,4 +138,4 @@ std::string GetMD5String(std::string msg)
 
 	return str;
 }
-}  // namespace utils
+}  // namespace DataGraph::utils

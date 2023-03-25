@@ -9,7 +9,7 @@
 #include <Forms/imguidatechooser/imguidatechooser.hpp>
 
 #include <Core/FormHandler.hpp>
-#include <Core/Networking.hpp>
+#include <Networking/Networking.hpp>
 
 #include <utils/FileManagerDialoge.hpp>
 #include <utils/StringParse.hpp>

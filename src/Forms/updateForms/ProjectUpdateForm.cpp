@@ -11,18 +11,13 @@
 #include <Forms/imguidatechooser/imguidatechooser.hPP>
 
 #include <Core/FormHandler.hpp>
-#include <Core/Networking.hpp>
+#include <Networking/Networking.hpp>
 #include <utils/FileManagerDialoge.hpp>
 #include <utils/UIModules.hpp>
 #include <utils/StringParse.hpp>
 
 #include <utils/Time.hpp>
 
-// Todo fix second block after upload file
-// TODO add reset
-// TODO fix include
-// TODO think about error Message code duplication
-// TODO fix lastNodeIds problem
 namespace DataGraph::Forms
 {
 int ProjectUpdate::init() { return 0; }

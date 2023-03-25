@@ -13,7 +13,7 @@
 #include <Forms/imguidatechooser/imguidatechooser.hPP>
 
 #include <core/FormHandler.hpp>
-#include <core/Networking.hpp>
+#include <Networking/Networking.hpp>
 
 #include <utils/FileManagerDialoge.hpp>
 #include <utils/UIModules.hpp>

@@ -6,7 +6,7 @@
 #include <vector>
 #include <time.h>
 
-#include <Core/Networking.hpp>
+#include <Networking/Networking.hpp>
 #include <Core/FormHandler.hpp>
 
 #include <Forms/imguidatechooser/imguidatechooser.hpp>

@@ -43,7 +43,7 @@ int Logger::init()
 	return 0;
 }
 
-int Logger::createLogger(const std::string_view& name, bool enabled)
+int Logger::createLogger(const std::string_view name, bool enabled)
 {
 	assert(loggers.find(name) == loggers.end() && "Logger already exists");
 
@@ -59,7 +59,7 @@ int Logger::createLogger(const std::string_view& name, bool enabled)
 	return 0;
 }
 
-void Logger::enableLogger(const std::string_view& name)
+void Logger::enableLogger(const std::string_view name)
 {
 	auto logger = loggers.find(name);
 	assert(logger != loggers.end());
@@ -67,7 +67,7 @@ void Logger::enableLogger(const std::string_view& name)
 	logger->second.enabled = true;
 }
 
-void Logger::disableLogger(const std::string_view& name)
+void Logger::disableLogger(const std::string_view name)
 {
 	auto logger = loggers.find(name);
 	assert(logger != loggers.end());
@@ -75,7 +75,7 @@ void Logger::disableLogger(const std::string_view& name)
 	logger->second.enabled = false;
 }
 
-void Logger::flush(const std::string_view& name) { loggers[name].logger->flush(); }
+void Logger::flush(const std::string_view name) { loggers[name].logger->flush(); }
 
 void Logger::flushAll()
 {
@@ -88,11 +88,11 @@ void Logger::flushAll()
 #else
 
 int Logger::init() { return 0; }
-void Logger::flush(const std::string_view& name) {}
+void Logger::flush(const std::string_view name) {}
 void Logger::flushAll() {}
-int Logger::createLogger(const std::string_view& name, bool enabled) { return 0; }
-void Logger::enableLogger(const std::string_view& name) {}
-void Logger::disableLogger(const std::string_view& name) {}
+int Logger::createLogger(const std::string_view name, bool enabled) { return 0; }
+void Logger::enableLogger(const std::string_view name) {}
+void Logger::disableLogger(const std::string_view name) {}
 
 #endif	// _DEBUG
 
