@@ -26,4 +26,4 @@ jobs:
     - name: "Run Tests"
       run: ./bin/Test-windows-x86_64/Tool/Tool.exe
     - name: "Infrastructure down"
-      run: "& \"C:\\dockerFamily\\composeDown\\docker_compose.exe\""
+      run: "& \"C:\\dockerFamily\\docker_compose.exe\""
