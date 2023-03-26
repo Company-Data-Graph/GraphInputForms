@@ -39,7 +39,7 @@ enum : uint16_t
 	SOCKET_CREATION_FAILED
 };
 }
-constexpr inline bool isOK(ErrorCodes errorCodes);
+bool isOK(ErrorCodes errorCodes);
 
 std::string createHeadersString(const std::unordered_map<std::string, std::string>& headers);
 [[nodiscard]] ErrorCodes readFile(const std::string_view& filePath, std::vector<char>& fileContents);

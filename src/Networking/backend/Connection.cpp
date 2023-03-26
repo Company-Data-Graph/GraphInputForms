@@ -32,7 +32,7 @@ std::string createHeadersString(const std::unordered_map<std::string, std::strin
 	return headersString;
 }
 
-constexpr inline bool isOK(ErrorCodes errorCodes) { return errorCodes == ErrorCode::OK; }
+bool isOK(ErrorCodes errorCodes) { return errorCodes == ErrorCode::OK; }
 
 [[nodiscard]] ErrorCodes readFile(const std::string_view& filePath, std::vector<char>& fileContents)
 {
@@ -393,7 +393,7 @@ std::string_view getContentType(std::string_view filename)
 {
 	if (!std::filesystem::path(filePath).has_filename())
 	{
-		return ErrorCode::FILE_NOT_FOUND;
+		// return ErrorCode::FILE_NOT_FOUND;
 	}
 
 	std::vector<char> content;

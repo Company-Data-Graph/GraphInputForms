@@ -11,7 +11,7 @@ bool connectToMediaServer(ConnectionData& mediaServer, Response& response)
 }
 bool loadFileToHost(std::string_view filePath, ConnectionData& mediaServer, Response& response)
 {
-	auto result = backend::connectToMediaServer(mediaServer, response);
+	auto result = backend::loadFileToHost(filePath, mediaServer, response);
 	return backend::isOK(result);
 }
 }  // namespace DataGraph::Networking

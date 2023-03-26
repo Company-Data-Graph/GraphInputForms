@@ -89,11 +89,12 @@ int AuthForm::draw()
 				options.set(dmitigr::pgfe::Communication_mode::net)
 					 .set_hostname(m_database.ip)
 					 .set_port(std::stoi(m_database.port))
-					 .set_database("DataGraph")
+					 .set_database("datagraph")
 					 .set_username(m_database.login)
 					 .set_password(m_database.password);
 				FormHandler::getDbConn() = std::make_unique<dmitigr::pgfe::Connection>(options);
 				FormHandler::getDbConn()->connect();
+				FormHandler::getMedServConn() = std::make_unique<Networking::ConnectionData>(m_mediaServer);
 
 				m_errorMessage = "Connected";
 				m_errorCode = 0;

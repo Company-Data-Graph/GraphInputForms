@@ -199,7 +199,8 @@ int ProjectInsert::draw()
 				Networking::Response response;
 				if (!m_filePath.empty())
 				{
-					auto result = Networking::loadFileToHost(m_filePath, *FormHandler::getMedServConn(), response);
+					auto& credentials = FormHandler::getMedServConn();
+					auto result = Networking::loadFileToHost(m_filePath, *credentials, response);
 					if (result != 0 || response.returnCode == 0)
 					{
 						m_errorCode = 1;
