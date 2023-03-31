@@ -46,7 +46,7 @@ std::string createHeadersString(const std::unordered_map<std::string, std::strin
 [[nodiscard]] ErrorCodes parseHeader(std::string_view headerView, json& header);
 [[nodiscard]] ErrorCodes receiveResponse(SocketWrapper& socket, Response& response);
 [[nodiscard]] ErrorCodes sendAll(SocketWrapper& socket, const char* buffer, int length, int flags, int* sentBytes = nullptr);
-[[nodiscard]] ErrorCodes send_request(SocketWrapper& socket,
+[[nodiscard]] ErrorCodes sendRequest(SocketWrapper& socket,
 	 const std::string& url,
 	 const std::unordered_map<std::string, std::string>& headers,
 	 const json& body,

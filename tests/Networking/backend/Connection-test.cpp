@@ -469,7 +469,7 @@ TEST(SendRequestTest, SendRequestSuccessfully)
 	Networking::Response response;
 	tests::ConnectionServer::m_customResponse.store("HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\n{\"admin\":\"admin\"}");
 
-	result = Networking::backend::send_request(clientSocket, url, headers, body, response, true);
+	result = Networking::backend::sendRequest(clientSocket, url, headers, body, response, true);
 	tests::ConnectionServer::m_customResponse.store(nullptr);
 	ASSERT_TRUE(Networking::backend::isOK(result));
 
@@ -507,7 +507,7 @@ TEST(SendRequestTest, SendRequestSuccessffullyResponse)
 	};
 
 	Networking::Response response;
-	result = Networking::backend::send_request(clientSocket, url, headers, body, response, true);
+	result = Networking::backend::sendRequest(clientSocket, url, headers, body, response, true);
 	ASSERT_TRUE(Networking::backend::isOK(result));
 
 	auto& responseMessage = response.raw;
@@ -544,7 +544,7 @@ TEST(SendRequestTest, SendRequestInvalidSocket)
 
 	Networking::Response response;
 	Networking::backend::SocketWrapper sock;
-	result = Networking::backend::send_request(sock, url, headers, body, response, true);
+	result = Networking::backend::sendRequest(sock, url, headers, body, response, true);
 	EXPECT_FALSE(Networking::backend::isOK(result));
 }
 

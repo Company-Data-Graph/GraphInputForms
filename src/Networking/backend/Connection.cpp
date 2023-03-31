@@ -193,7 +193,7 @@ bool isOK(ErrorCodes errorCodes) { return errorCodes == ErrorCode::OK; }
 	return ErrorCode::OK;
 }
 
-[[nodiscard]] ErrorCodes send_request(SocketWrapper& socket,
+[[nodiscard]] ErrorCodes sendRequest(SocketWrapper& socket,
 	 const std::string& url,
 	 const std::unordered_map<std::string, std::string>& headers,
 	 const json& body,
@@ -363,7 +363,7 @@ bool isOK(ErrorCodes errorCodes) { return errorCodes == ErrorCode::OK; }
 	}
 
 	std::string mediaServerURL = fmt::format("{}:{}", mediaServer.ip, mediaServer.port);
-	return send_request(socket, fmt::format("http://{}/media-server/signin", mediaServerURL), {},
+	return sendRequest(socket, fmt::format("http://{}/media-server/signin", mediaServerURL), {},
 		 json({{"username", mediaServer.login}, {"password", mediaServer.password}}), response);
 }
 
