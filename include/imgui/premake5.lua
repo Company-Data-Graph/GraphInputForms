@@ -16,7 +16,14 @@ project "imgui"
 	}
 
 	filter  "configurations:not Test"
-		removefiles { "imgui_te*.h", "imgui_te*.cpp", "imgui_capture_tool.h", "imgui_capture_tool.cpp", "thirdparty/**.*" }
+		removefiles 
+		{ 
+			"imgui_te*.h", 
+			"imgui_te*.cpp", 
+			"imgui_capture_tool.h", 
+			"imgui_capture_tool.cpp", 
+			"thirdparty/**.*" 
+		}
 
 	filter "configurations:Debug or Test"
 		runtime "Debug"
@@ -28,5 +35,9 @@ project "imgui"
 		defines "NDEBUG"
 
 	filter "configurations:Test"
-		defines "IMGUI_ENABLE_TEST_ENGINE"
+		defines 
+		{
+			"IMGUI_ENABLE_TEST_ENGINE", 
+			"IMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL"
+		}
 
