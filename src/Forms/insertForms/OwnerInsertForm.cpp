@@ -13,7 +13,7 @@ int OwnerInsert::draw()
 {
 	if (!m_errorMessage.empty())
 	{
-		if (m_returnCode == 0)
+		if (m_errorCode == 0)
 		{
 			ImGui::TextColored({0, 0.9, 0, 1}, "%s", m_errorMessage.data());
 		}
@@ -31,14 +31,14 @@ int OwnerInsert::draw()
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0, 0.2, 0, 1});
 	if (ImGui::Button("Submit"))
 	{
-		int* dataPtr = &m_returnCode;
+		int* dataPtr = &m_errorCode;
 		FormHandler::getDbConn()->execute(
 			 [dataPtr](auto&& data) {
 				 using dmitigr::pgfe::to;
 				 *dataPtr = to<int>(data[0]);
 			 },
 			 "SELECT * FROM addowner($1)", m_ownerName);
-		switch (m_returnCode)
+		switch (m_errorCode)
 		{
 		case 0:
 			m_ownerName = "";
@@ -65,4 +65,7 @@ const char* OwnerInsert::name() const { return "Owners"; }
 
 void OwnerInsert::reset() {}
 
+std::string_view OwnerInsert::getStatusMessage() const { return m_errorMessage; }
+
+int OwnerInsert::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

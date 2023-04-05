@@ -108,4 +108,8 @@ void OwnerDelete::reset()
 	m_errorMessage = "";
 	m_ownerSearch = "";
 }
+
+std::string_view OwnerDelete::getStatusMessage() const { return m_errorMessage; }
+
+int OwnerDelete ::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

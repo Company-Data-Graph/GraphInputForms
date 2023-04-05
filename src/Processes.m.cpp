@@ -3,6 +3,7 @@
 #ifdef FORMHANDLER_TESTS
 #include <Networking/backend/Unit-tests.hpp>
 #include <Networking/backend/Integration.hpp>
+#include <Forms/UI-tests.hpp>
 #include <unordered_map>
 #include <functional>
 #include <string>
@@ -12,14 +13,7 @@
 
 int main(int argc, char** argv)
 {
-	DataGraph::FormHandler form;
-	if (form.init() != 0)
-	{
-		return 1;
-	}
-
 #ifdef FORMHANDLER_TESTS
-	::testing::InitGoogleTest(&argc, argv);
 
 	std::string unitTestServerPort = "44852";
 	std::unordered_map<std::string_view, std::function<void(std::string_view)>> argHandlers
@@ -27,8 +21,20 @@ int main(int argc, char** argv)
 				 [](std::string_view arg) {
 					 DataGraph::tests::setIntegrationTests(true);
 				 }},
-			  {{"--UnitTestServerPort"}, [&](std::string_view arg) {
-				   unitTestServerPort = arg;
+			  {{"--UnitTestServerPort"},
+				   [&](std::string_view arg) {
+					   unitTestServerPort = arg;
+				   }},
+			  {{"--UI-tests"},
+				   [](std::string_view arg) {
+					   DataGraph::tests::enableUITests();
+					   if (arg == "Auto")
+					   {
+						   DataGraph::tests::enableAutoTests();
+					   }
+				   }},
+			  {{"--enableViewPort"}, [](std::string_view arg) {
+				   DataGraph::tests::setWindowVisibility(true);
 			   }}};
 	for (int i = 1; i < argc; i++)
 	{
@@ -46,8 +52,24 @@ int main(int argc, char** argv)
 			it->second(value);
 		}
 	}
+#endif
+
+	DataGraph::FormHandler form;
+	if (form.init() != 0)
+	{
+		return -1;
+	}
+
+#ifdef FORMHANDLER_TESTS
+	if (DataGraph::tests::isUITestsEnabled())
+	{
+		form.run();
+	}
+
+	::testing::InitGoogleTest(&argc, argv);
 
 	::testing::AddGlobalTestEnvironment(new DataGraph::tests::ConnectionServer(unitTestServerPort));
+
 
 	return RUN_ALL_TESTS();
 #endif

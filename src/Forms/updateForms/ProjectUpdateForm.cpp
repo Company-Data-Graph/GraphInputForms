@@ -338,6 +338,8 @@ int ProjectUpdate::draw()
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0.2, 0.2, 0, 1});
 	if (ImGui::Button("Update"))
 	{
+		m_warningMessage = "";
+
 		std::string departments = utils::parseDepartments(m_departmentsList);
 		std::string lastNodes = utils::parseLastNode(m_previousVersionsList);
 		std::string dt = utils::parseDate(m_date);
@@ -521,6 +523,10 @@ const char* ProjectUpdate::name() const { return "Projects"; }
 
 void ProjectUpdate::reset() {}
 
+std::string_view ProjectUpdate::getStatusMessage() const { return m_errorMessage; }
+
+int ProjectUpdate::getStatusCode() const { return m_errorCode; }
+
 void ProjectUpdate::resetVersionOrderList()
 {
 	m_versionOrderList.clear();
@@ -540,5 +546,4 @@ void ProjectUpdate::resetVersionOrderList()
 	m_projectVersionOrderIndex = m_projectVersionIndex;
 	m_projectVersionIndexChanged = false;
 }
-
 }  // namespace DataGraph::Forms

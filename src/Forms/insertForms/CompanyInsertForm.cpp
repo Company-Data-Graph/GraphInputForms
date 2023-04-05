@@ -90,6 +90,7 @@ int CompanyInsert::draw()
 	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, {0, 0.2, 0, 1});
 	if (!m_filePath.empty() && !m_companyName.empty() && m_ownerId != -1 && ImGui::Button("Submit"))
 	{
+		m_warningMessage = "";
 		int employeeCount = m_employeeCount.value_or(-1);
 		std::string departmentsList = utils::parseDepartments(m_chosenDepartments);
 		std::string dt = utils::parseDate(m_date);
@@ -220,4 +221,7 @@ const char* CompanyInsert::name() const { return "Companies"; }
 
 void CompanyInsert::reset() {}
 
+std::string_view CompanyInsert::getStatusMessage() const { return m_errorMessage; }
+
+int CompanyInsert::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

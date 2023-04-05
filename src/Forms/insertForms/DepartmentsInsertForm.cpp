@@ -70,4 +70,7 @@ const char* DepartmentInsert::name() const { return "Departments"; }
 
 void DepartmentInsert::reset() {}
 
+std::string_view DepartmentInsert::getStatusMessage() const { return m_errorMessage; }
+
+int DepartmentInsert::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

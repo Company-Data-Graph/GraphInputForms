@@ -13,6 +13,10 @@ int DepartmentUpdate::init() { return 0; }
 
 int DepartmentUpdate::draw()
 {
+	static std::string preview = "";
+	constexpr const uint16_t DepartmentWidth = 200;
+	constexpr const uint16_t DepartmentSearchWidth = 200;
+
 	if (!m_errorMessage.empty())
 	{
 		if (m_errorCode != 0)
@@ -28,7 +32,8 @@ int DepartmentUpdate::draw()
 	ImGui::Text("Department name: ");
 	ImGui::SameLine();
 
-	static std::string preview = "";
+
+	ImGui::PushItemWidth(DepartmentWidth);
 	if (ImGui::BeginCombo("##DepartmentsList", preview.c_str()))
 	{
 		auto curId = &m_departmentId;
@@ -44,9 +49,17 @@ int DepartmentUpdate::draw()
 					 preview = std::move(dt.second);
 				 }
 			 },
-			 "SELECT * FROM getdepartments()");
+			 "SELECT * FROM getdepartments($1)", m_searchName);
 		ImGui::EndCombo();
 	}
+	ImGui::PopItemWidth();
+	ImGui::SameLine();
+
+	ImGui::Text("Department search: ");
+	ImGui::SameLine();
+	ImGui::PushItemWidth(DepartmentSearchWidth);
+	ImGui::InputText("##DepartmentsSearch", &m_searchName);
+	ImGui::PopItemWidth();
 
 	if (m_departmentId != -1)
 	{
@@ -100,4 +113,7 @@ const char* DepartmentUpdate::name() const { return "Departments"; }
 
 void DepartmentUpdate::reset() {}
 
+std::string_view DepartmentUpdate::getStatusMessage() const { return m_errorMessage; }
+
+int DepartmentUpdate::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

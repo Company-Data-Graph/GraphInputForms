@@ -20,11 +20,16 @@
 #include <cstdlib>
 #endif
 
+#ifdef FORMHANDLER_TESTS
+#include <Forms/UI-tests.hpp>
+#endif	// FORMHANDLER_TESTS
+
 namespace DataGraph
 {
 std::unique_ptr<Logger> FormHandler::loggers;
 std::unique_ptr<UI> FormHandler::ui;
-FormHandler::Window FormHandler::window;
+FormHandler::Window FormHandler::m_window;
+FormHandler::WindowData FormHandler::m_data;
 std::unique_ptr<dmitigr::pgfe::Connection> FormHandler::dbConnection;
 std::unique_ptr<Networking::ConnectionData> FormHandler::medServConn;
 
@@ -52,7 +57,7 @@ void setWorkingDirectory()
 	ssize_t count = readlink("/proc/self/exe", result, MaxPathLength);
 	std::wstring wpath;
 	wpath.resize(count, '\0');
-	mbstowcs(wpath.data(), result, count);
+	mbstowcs(wpath.m_data(), result, count);
 #endif
 
 	std::filesystem::current_path(std::filesystem::path(wpath).remove_filename().parent_path().parent_path().parent_path().parent_path());
@@ -60,9 +65,9 @@ void setWorkingDirectory()
 
 FormHandler::FormHandler(const std::string_view& title, const uint32_t width, const uint32_t height)
 {
-	data.title = title;
-	data.width = width;
-	data.height = height;
+	m_data.title = title;
+	m_data.width = width;
+	m_data.height = height;
 }
 
 int FormHandler::init(bool resizeAble)
@@ -98,16 +103,20 @@ int FormHandler::init(bool resizeAble)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, resizeAble);
-	window.window = glfwCreateWindow(data.width, data.height, data.title.c_str(), NULL, NULL);
-	if (!window.window)
+#ifdef FORMHANDLER_TESTS
+	tests::setupWindowParams();
+#endif	// FORMHANDLER_TESTS
+
+	m_window.window = glfwCreateWindow(m_data.width, m_data.height, m_data.title.c_str(), NULL, NULL);
+	if (!m_window.window)
 	{
 		FormHandler::logs()->error("Core", "Window initialization has failed.");
 		return -2;
 	}
 
-	glfwSetWindowUserPointer(window.window, &data);
+	glfwSetWindowUserPointer(m_window.window, &m_data);
 
-	glfwSetWindowSizeCallback(window.window, [](GLFWwindow* window, int width, int height) {
+	glfwSetWindowSizeCallback(m_window.window, [](GLFWwindow* window, int width, int height) {
 		WindowData* windowData = reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
 
 		windowData->height = height;
@@ -122,7 +131,7 @@ int FormHandler::init(bool resizeAble)
 		windowData->minimized = false;
 	});
 
-	glfwSetWindowCloseCallback(window.window, [](GLFWwindow* window) {
+	glfwSetWindowCloseCallback(m_window.window, [](GLFWwindow* window) {
 		WindowData* windowData = reinterpret_cast<WindowData*>(glfwGetWindowUserPointer(window));
 		windowData->closed = true;
 	});
@@ -131,10 +140,10 @@ int FormHandler::init(bool resizeAble)
 	icon.pixels = stbi_load("resources/icons/AppIcon.png", &icon.width, &icon.height, nullptr, STBI_rgb_alpha);
 	assert(icon.pixels != nullptr);
 
-	glfwSetWindowIcon(window.window, 1, &icon);
+	glfwSetWindowIcon(m_window.window, 1, &icon);
 	stbi_image_free(icon.pixels);
 
-	glfwMakeContextCurrent(window.window);
+	glfwMakeContextCurrent(m_window.window);
 
 	FormHandler::logs()->log("Core", "Window initialization has ended successfully.");
 	assert(result == 0);
@@ -146,23 +155,26 @@ int FormHandler::init(bool resizeAble)
 	return 0;
 }
 
+void FormHandler::close() { m_data.closed = true; }
+
 void FormHandler::run()
 {
-	while (!data.closed)
+	while (!m_data.closed)
 	{
-		if (!data.minimized)
+		if (!m_data.minimized)
 		{
 			ui->beginFrame();
 			ui->endFrame();
 		}
 
-		glfwSwapBuffers(window.window);
+		glfwSwapBuffers(m_window.window);
 		glfwPollEvents();
 	}
 }
+
 FormHandler::~FormHandler()
 {
-	if (window.window)
+	if (m_window.window)
 	{
 		glfwTerminate();
 	}
@@ -170,5 +182,5 @@ FormHandler::~FormHandler()
 	WSACleanup();
 }
 
-FormHandler::Window& FormHandler::getWindow() { return window; }
+FormHandler::Window& FormHandler::getWindow() { return m_window; }
 }  // namespace DataGraph

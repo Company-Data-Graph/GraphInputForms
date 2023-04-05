@@ -143,4 +143,7 @@ void ProjectDelete::reset()
 	m_projectId = -1;
 }
 
+std::string_view ProjectDelete::getStatusMessage() const { return m_errorMessage; }
+
+int ProjectDelete::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

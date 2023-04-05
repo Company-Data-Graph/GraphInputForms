@@ -89,4 +89,8 @@ int OwnerUpdate::draw()
 
 const char* OwnerUpdate::name() const { return "Owners"; }
 void OwnerUpdate::reset() {}
+
+std::string_view OwnerUpdate::getStatusMessage() const { return m_errorMessage; }
+
+int OwnerUpdate::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

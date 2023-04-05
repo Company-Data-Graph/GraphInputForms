@@ -15,10 +15,13 @@ public:
 	const char* name() const final;
 	void reset() final;
 
+	std::string_view getStatusMessage() const override final;
+	int getStatusCode() const override final;
+
 private:
 	std::string_view m_errorMessage;
 
-	int m_returnCode;
+	int m_errorCode = 1;
 	std::string m_ownerName;
 };
 }  // namespace DataGraph::Forms

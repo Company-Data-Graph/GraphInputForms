@@ -51,9 +51,9 @@ int Logger::createLogger(const std::string_view name, bool enabled)
 	sinks[0] = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
 	constexpr const bool truncate = true;
-	sinks[1] = std::make_shared<spdlog::sinks::basic_file_sink_mt>(fmt::format("{0}/{1}.{2}", LogDir, name.data(), LogExt), truncate);
+	sinks[1] = std::make_shared<spdlog::sinks::basic_file_sink_mt>(fmt::format("{0}/{1}.{2}", LogDir, name.m_data(), LogExt), truncate);
 
-	auto logger = std::make_shared<spdlog::logger>(name.data(), begin(sinks), end(sinks));
+	auto logger = std::make_shared<spdlog::logger>(name.m_data(), begin(sinks), end(sinks));
 	loggers.emplace(logger->name(), LoggerData{enabled, logger});
 
 	return 0;

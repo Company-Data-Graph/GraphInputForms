@@ -17,12 +17,15 @@ public:
 	const char* name() const final;
 	void reset() final;
 
+	std::string_view getStatusMessage() const override final;
+	int getStatusCode() const override final;
+
 private:
 	uint32_t m_companyId = -1;
 	std::string m_companyNamePreview;
 	std::string m_companySearch;
 
-	uint32_t m_ownerId;
+	uint32_t m_ownerId = -1;
 	std::string m_ownerPreview;
 	std::string m_ownerSearch;
 
@@ -36,7 +39,7 @@ private:
 
 	std::string m_filePath;
 
-	uint32_t m_errorCode;
+	uint32_t m_errorCode = -1;
 	std::string_view m_errorMessage;
 	std::string_view m_warningMessage;
 

@@ -311,4 +311,7 @@ const char* ProjectInsert::name() const { return "Projects"; }
 
 void ProjectInsert::reset() {}
 
+std::string_view ProjectInsert::getStatusMessage() const { return m_errorMessage; }
+
+int ProjectInsert::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

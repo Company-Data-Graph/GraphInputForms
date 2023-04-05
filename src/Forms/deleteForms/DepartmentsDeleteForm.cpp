@@ -142,8 +142,12 @@ const char* DepartmentDelete::name() const { return "Departments"; }
 
 void DepartmentDelete::reset()
 {
-	m_errorCode = 0;
+	m_errorCode = -1;
 	m_errorMessage = "";
 }
+
+std::string_view DepartmentDelete::getStatusMessage() const { return m_errorMessage; }
+
+int DepartmentDelete::getStatusCode() const { return m_errorCode; }
 
 }  // namespace DataGraph::Forms

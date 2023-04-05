@@ -25,6 +25,7 @@ int InsertForm::draw()
 	{
 		if (ImGui::BeginTabItem(form->name()))
 		{
+			m_activeForm = form->name();
 			form->draw();
 			ImGui::EndTabItem();
 		}
@@ -35,6 +36,41 @@ int InsertForm::draw()
 }
 
 const char* InsertForm::name() const { return "Insert"; }
-void InsertForm::reset()
-{}
+void InsertForm::reset() {}
+
+std::string_view InsertForm::getStatusMessage() const
+{
+	for (auto form : subForms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (form->getStatusCode() != -1)
+		{
+			return form->getStatusMessage();
+		}
+	}
+
+	return "";
+}
+
+int InsertForm::getStatusCode() const
+{
+	for (auto form : subForms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (auto code = form->getStatusCode(); code != -1)
+		{
+			return code;
+		}
+	}
+
+	return -1;
+}
 }  // namespace DataGraph::Forms

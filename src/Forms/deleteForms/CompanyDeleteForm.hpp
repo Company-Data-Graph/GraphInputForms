@@ -15,8 +15,11 @@ public:
 	const char* name() const final;
 	void reset() final;
 
+	std::string_view getStatusMessage() const override final;
+	int getStatusCode() const override final;
+
 private:
-	int m_errorCode;
+	int m_errorCode = -1;
 	std::string_view m_errorMessage;
 
 	uint32_t m_companyId = -1;

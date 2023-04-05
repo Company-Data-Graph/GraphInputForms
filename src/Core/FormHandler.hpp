@@ -15,12 +15,12 @@ namespace DataGraph
 class FormHandler
 {
 public:
-	static constexpr const uint32_t defaultWidth = 1920;
-	static constexpr const uint32_t defaultHeight = 1080;
+	static constexpr const uint32_t DefaultWidth = 1920;
+	static constexpr const uint32_t DefaultHeight = 1080;
 
 	FormHandler(const std::string_view& title = "DataGraphForms",
-		 const uint32_t width = defaultWidth,
-		 const uint32_t heigth = defaultHeight);
+		 const uint32_t width = DefaultWidth,
+		 const uint32_t heigth = DefaultHeight);
 
 	static std::unique_ptr<Logger>& logs();
 	static std::unique_ptr<UI>& getUI();
@@ -28,6 +28,8 @@ public:
 	static std::unique_ptr<Networking::ConnectionData>& getMedServConn();
 
 	int init(bool resizeAble = true);
+	static void close();
+
 	void run();
 
 	struct WindowData
@@ -48,16 +50,17 @@ private:
 		GLFWwindow* window;
 	};
 
-	static Window window;
+	static Window m_window;
 
 	static Window& getWindow();
-	WindowData data;
+	static WindowData m_data;
 
 	static std::unique_ptr<Logger> loggers;
 	static std::unique_ptr<UI> ui;
 	static std::unique_ptr<dmitigr::pgfe::Connection> dbConnection;
 	static std::unique_ptr<Networking::ConnectionData> medServConn;
 
+	// Could be replaced with some accessors
 	friend class UI;
 };
 }  // namespace DataGraph

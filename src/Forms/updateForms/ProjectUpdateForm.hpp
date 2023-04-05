@@ -19,10 +19,13 @@ public:
 	const char* name() const override final;
 	void reset() final;
 
+	std::string_view getStatusMessage() const override final;
+	int getStatusCode() const override final;
+
 private:
 	void resetVersionOrderList();
 
-	uint32_t m_errorCode;
+	uint32_t m_errorCode = -1;
 	std::string_view m_errorMessage;
 	std::string_view m_warningMessage;
 

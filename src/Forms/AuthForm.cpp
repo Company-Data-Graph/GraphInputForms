@@ -125,4 +125,7 @@ int AuthForm::draw()
 	return 0;
 }
 
+std::string_view AuthForm::getStatusMessage() const { return m_errorMessage; }
+
+int AuthForm::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

@@ -267,4 +267,7 @@ const char* CompanyUpdate::name() const { return "Companies"; }
 
 void CompanyUpdate::reset() {}
 
+std::string_view CompanyUpdate::getStatusMessage() const { return m_errorMessage; }
+
+int CompanyUpdate::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

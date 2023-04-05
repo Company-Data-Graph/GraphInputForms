@@ -1,14 +1,25 @@
-#include "UI.hpp"
+﻿#include "UI.hpp"
+
+#include <string>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+
 
 #include <Core/FormHandler.hpp>
 #include <Forms/InsertForms.hpp>
 #include <Forms/UpdateForms.hpp>
 #include <Forms/DeleteForms.hpp>
 #include <Forms/AuthForm.hpp>
+
+#ifdef FORMHANDLER_TESTS
+#include <imgui_te_engine.h>
+#include <imgui_te_internal.h>
+#include <imgui_te_ui.h>
+#include <imgui_te_context.h>
+#include <Forms/UI-tests.hpp>
+#endif	// FORMHANDLER_TESTS
 
 namespace DataGraph
 {
@@ -125,7 +136,6 @@ void setColors()
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 }
 
-
 void setFonts()
 {
 	ImFontAtlas atlas;
@@ -234,7 +244,7 @@ int UI::init()
 {
 	FormHandler::logs()->log("Core", "UI initialization has begun.");
 
-	auth.init();
+	m_auth.init();
 
 	auto form = new (std::nothrow) Forms::InsertForm;
 	if (form == nullptr)
@@ -242,7 +252,7 @@ int UI::init()
 		FormHandler::logs()->log("Core", "UI initialization has failed with error\"Not enough memory\".");
 		return -1;
 	}
-	forms.emplace_back(form);
+	m_forms.emplace_back(form);
 
 	auto updateForm = new (std::nothrow) Forms::UpdateForm;
 	if (updateForm == nullptr)
@@ -251,7 +261,7 @@ int UI::init()
 		return -1;
 	}
 
-	forms.emplace_back(updateForm);
+	m_forms.emplace_back(updateForm);
 
 	auto deleteForm = new (std::nothrow) Forms::DeleteForm;
 	if (deleteForm == nullptr)
@@ -260,7 +270,7 @@ int UI::init()
 		return -1;
 	}
 
-	forms.emplace_back(deleteForm);
+	m_forms.emplace_back(deleteForm);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -268,12 +278,18 @@ int UI::init()
 	ImGui_ImplGlfw_InitForOpenGL(FormHandler::getWindow().window, true);
 	ImGui_ImplOpenGL3_Init();
 
+#ifdef FORMHANDLER_TESTS
+	m_engine = ImGuiTestEngine_CreateContext();
+	ImGuiTestEngine_Start(m_engine, ImGui::GetCurrentContext());
+	tests::registerImguiTests(m_engine);
+#endif	// FORMHANDLER_TESTS
+
 	setStyles();
 	setFonts();
 	setColors();
 
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NavEnableKeyboard;
-	for (auto&& form : forms)
+	for (auto&& form : m_forms)
 	{
 		FormHandler::logs()->log("Core", "{0} form initialization has begun.", form->name());
 		auto result = form->init();
@@ -283,7 +299,6 @@ int UI::init()
 	}
 
 	FormHandler::logs()->log("Core", "UI initialization has ended successfully.");
-
 	return 0;
 }
 
@@ -303,23 +318,50 @@ void UI::beginFrame()
 
 	if (ImGui::BeginTabItem("AuthForm"))
 	{
-		auth.draw();
+		m_activeForm = "AuthForm";
+		m_auth.draw();
 		ImGui::EndTabItem();
 	}
 
 	if (FormHandler::getDbConn() && FormHandler::getDbConn()->is_connected())
 	{
-		for (auto form : forms)
+		for (auto form : m_forms)
 		{
-			ImGui::PushID(form->name());
 			if (ImGui::BeginTabItem(form->name()))
 			{
+				m_activeForm = form->name();
+				ImGui::PushID(form->name());
 				form->draw();
 				ImGui::EndTabItem();
+				ImGui::PopID();
 			}
-			ImGui::PopID();
 		}
 	}
+#ifdef FORMHANDLER_TESTS
+	if (tests::isAutoTestsEnabled())
+	{
+		int test_n = 0;
+		for (; test_n < m_engine->TestsAll.Size; ++test_n)
+		{
+			ImGuiTest* test = m_engine->TestsAll[test_n];
+			ImGuiTestContext* test_context = (m_engine->TestContext && m_engine->TestContext->Test == test) ? m_engine->TestContext : NULL;
+			if (!m_engine->IO.IsRunningTests && test->Status == ImGuiTestStatus_Unknown)
+			{
+				ImGuiTestEngine_QueueTest(m_engine, test, ImGuiTestRunFlags_ManualRun);
+				break;
+			}
+		}
+
+		if (test_n == m_engine->TestsAll.Size && m_engine->TestsQueue.empty())
+		{
+			FormHandler::close();
+		}
+	}
+	else
+	{
+		ImGuiTestEngine_ShowTestEngineWindows(m_engine, nullptr);
+	}
+#endif	// FORMHANDLER_TESTS
 
 	ImGui::EndTabBar();
 	ImGui::End();
@@ -330,11 +372,65 @@ void UI::endFrame()
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
+
+std::string_view UI::getStatusMessage()
+{
+	if (m_activeForm == "AuthForm" && m_auth.getStatusCode() != -1)
+	{
+		return m_auth.getStatusMessage();
+	}
+
+	for (auto form : m_forms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (form->getStatusCode() != -1)
+		{
+			return form->getStatusMessage();
+		}
+	}
+
+	return "";
+}
+
+int UI::getStatusCode()
+{
+	auto code = m_auth.getStatusCode();
+	if (m_activeForm == "AuthForm" && code != -1)
+	{
+		return code;
+	}
+
+	for (auto form : m_forms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (auto code = form->getStatusCode(); code != -1)
+		{
+			return code;
+		}
+	}
+
+	return -1;
+}
+
 UI::~UI()
 {
 	ImGui_ImplGlfw_Shutdown();
 	ImGui_ImplOpenGL3_Shutdown();
-	for (auto form : forms)
+	ImGui::DestroyContext();
+
+#ifdef FORMHANDLER_TESTS
+	ImGuiTestEngine_Stop(m_engine);
+	ImGuiTestEngine_DestroyContext(m_engine);
+#endif	// FORMHANDLER_TESTS
+	for (auto form : m_forms)
 	{
 		delete form;
 	}

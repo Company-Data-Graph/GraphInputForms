@@ -20,11 +20,12 @@ int UpdateForm::init()
 
 int UpdateForm::draw()
 {
-	ImGui::BeginTabBar("Update");
+	ImGui::BeginTabBar(name());
 	for (auto form : subForms)
 	{
 		if (ImGui::BeginTabItem(form->name()))
 		{
+			m_activeForm = form->name();
 			form->draw();
 			ImGui::EndTabItem();
 		}
@@ -35,6 +36,40 @@ int UpdateForm::draw()
 }
 
 const char* UpdateForm::name() const { return "Update"; }
-void UpdateForm::reset()
-{}
+void UpdateForm::reset() {}
+std::string_view UpdateForm::getStatusMessage() const
+{
+	for (auto form : subForms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (form->getStatusCode() != -1)
+		{
+			return form->getStatusMessage();
+		}
+	}
+
+	return "";
+}
+
+int UpdateForm::getStatusCode() const
+{
+	for (auto form : subForms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (auto code = form->getStatusCode(); code != -1)
+		{
+			return code;
+		}
+	}
+
+	return -1;
+}
 }  // namespace DataGraph::Forms

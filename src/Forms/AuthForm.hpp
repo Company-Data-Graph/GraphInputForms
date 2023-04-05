@@ -15,11 +15,14 @@ public:
 	int init();
 	int draw();
 
+	std::string_view getStatusMessage() const;
+	int getStatusCode() const;
+
 private:
 	Networking::ConnectionData m_database;
 	Networking::ConnectionData m_mediaServer;
 
-	int m_errorCode;
+	int m_errorCode = -1;
 	std::string m_errorMessage;
 };
 }  // namespace DataGraph::Forms

@@ -101,7 +101,10 @@ const char* CompanyDelete::name() const { return "Companies"; }
 void CompanyDelete::reset()
 {
 	m_errorMessage = "";
-	m_errorCode = 0;
+	m_errorCode = -1;
 }
 
+std::string_view CompanyDelete::getStatusMessage() const { return m_errorMessage; }
+
+int CompanyDelete::getStatusCode() const { return m_errorCode; }
 }  // namespace DataGraph::Forms

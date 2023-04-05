@@ -42,4 +42,40 @@ int DeleteForm::draw()
 
 const char* DeleteForm::name() const { return "Delete"; }
 void DeleteForm::reset() {}
+
+std::string_view DeleteForm::getStatusMessage() const
+{
+	for (auto form : subForms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (form->getStatusCode() != -1)
+		{
+			return form->getStatusMessage();
+		}
+	}
+
+	return "";
+}
+
+int DeleteForm::getStatusCode() const
+{
+	for (auto form : subForms)
+	{
+		if (form->name() != m_activeForm)
+		{
+			continue;
+		}
+
+		if (auto code = form->getStatusCode(); code != -1)
+		{
+			return code;
+		}
+	}
+
+	return -1;
+}
 }  // namespace DataGraph::Forms
